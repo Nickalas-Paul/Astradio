@@ -41,7 +41,7 @@ export const enhancedHelmet = helmet({
       styleSrc: ["'self'", "'unsafe-inline'"],
       scriptSrc: ["'self'"],
       imgSrc: ["'self'", "data:", "https:"],
-      connectSrc: ["'self'", "https://api.astradio.com", "https://astradio.vercel.app"],
+      connectSrc: ["'self'", "https://api.astradio.com", "https://astradio.vercel.app", "https://astradio.io", "https://www.astradio.io"],
       fontSrc: ["'self'"],
       objectSrc: ["'none'"],
       mediaSrc: ["'self'"],
@@ -230,7 +230,9 @@ export const corsOptions = {
     const allowedOrigins = [
       'http://localhost:3000',
       'https://astradio.vercel.app',
-      'https://astradio-staging.vercel.app'
+      'https://astradio-staging.vercel.app',
+      'https://astradio.io',
+      'https://www.astradio.io'
     ];
     
     // Allow requests with no origin (like mobile apps or curl requests)

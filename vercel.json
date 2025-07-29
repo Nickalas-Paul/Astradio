@@ -24,6 +24,14 @@
   "env": {
     "NODE_ENV": "production"
   },
+  "domains": ["astradio.io", "www.astradio.io"],
+  "redirects": [
+    {
+      "source": "/www.astradio.io",
+      "destination": "https://astradio.io",
+      "permanent": true
+    }
+  ],
   "functions": {
     "apps/api/src/app.ts": {
       "maxDuration": 30

@@ -89,9 +89,17 @@ export const sanitizeUserContent = (content: string): string => {
 
 // Secure API URL construction
 export const buildSecureAPIUrl = (endpoint: string): string => {
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+  // Production API URL
+  const productionUrl = process.env.NEXT_PUBLIC_API_URL || 'https://astradio.vercel.app/api';
+  // Development API URL
+  const developmentUrl = 'http://localhost:3001';
+  
+  const baseUrl = process.env.NODE_ENV === 'production' ? productionUrl : developmentUrl;
   const sanitizedEndpoint = sanitizeInput(endpoint.replace(/^\/+/, ''));
-  return `${baseUrl}/api/${sanitizedEndpoint}`;
+  
+  // If baseUrl already includes /api, don't add it again
+  const apiPath = baseUrl.includes('/api') ? '' : '/api';
+  return `${baseUrl}${apiPath}/${sanitizedEndpoint}`;
 };
 
 // Validate environment variables
