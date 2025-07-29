@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Navigation from '../components/Navigation';
 import AnimatedChartWheel from '../components/AnimatedChartWheel';
 import { AstroChart } from '../types';
+import { buildSecureAPIUrl, clientRateLimiter, sanitizeHTML } from '../lib/security';
 
 export default function HomePage() {
   const [todayChart, setTodayChart] = useState<AstroChart | null>(null);
@@ -14,8 +15,26 @@ export default function HomePage() {
   useEffect(() => {
     const loadTodayChart = async () => {
       try {
+        // Rate limiting check
+        if (!clientRateLimiter.canMakeRequest('daily')) {
+          console.warn('Rate limit exceeded for daily chart request');
+          return;
+        }
+        
         const today = new Date().toISOString().split('T')[0];
-        const response = await fetch(`http://localhost:3001/api/daily/${today}`);
+        const apiUrl = buildSecureAPIUrl(`daily/${today}`);
+        
+        const response = await fetch(apiUrl, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const data = await response.json();
         
         if (data.success) {
@@ -24,8 +43,16 @@ export default function HomePage() {
           const genres = ['ambient', 'folk', 'jazz', 'classical', 'electronic', 'rock', 'blues', 'world', 'techno', 'chill'];
           setCurrentGenre(genres[Math.floor(Math.random() * genres.length)]);
           
-          // Generate AI description
-          setAiDescription(`Today's ${data.data.chart.planets.Sun?.sign.name || 'cosmic'} energy flows through ${data.data.chart.planets.Moon?.sign.name || 'lunar'} waters, creating a ${currentGenre} soundscape that mirrors the ${data.data.chart.planets.Mercury?.sign.name || 'mercurial'} communication patterns. The ${data.data.chart.planets.Venus?.sign.name || 'venusian'} harmonies blend with ${data.data.chart.planets.Mars?.sign.name || 'martian'} rhythms, offering a musical reflection of today's astrological landscape.`);
+          // Generate AI description with sanitized content
+          const sunSign = data.data.chart.planets.Sun?.sign.name || 'cosmic';
+          const moonSign = data.data.chart.planets.Moon?.sign.name || 'lunar';
+          const mercurySign = data.data.chart.planets.Mercury?.sign.name || 'mercurial';
+          const venusSign = data.data.chart.planets.Venus?.sign.name || 'venusian';
+          const marsSign = data.data.chart.planets.Mars?.sign.name || 'martian';
+          
+          const description = `Today's ${sanitizeHTML(sunSign)} energy flows through ${sanitizeHTML(moonSign)} waters, creating a ${currentGenre} soundscape that mirrors the ${sanitizeHTML(mercurySign)} communication patterns. The ${sanitizeHTML(venusSign)} harmonies blend with ${sanitizeHTML(marsSign)} rhythms, offering a musical reflection of today's astrological landscape.`;
+          
+          setAiDescription(description);
         }
       } catch (error) {
         console.error('Failed to load today chart:', error);

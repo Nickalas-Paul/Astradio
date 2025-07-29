@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { FormData } from '../types';
 import LocationAutocomplete from './LocationAutocomplete';
 import { LocationResult } from '../lib/geocoding';
+import { sanitizeBirthData, validateDate, validateTime, validateCoordinates } from '../lib/security';
 
 interface BirthDataFormProps {
   onSubmit: (data: FormData) => void;
@@ -32,7 +33,26 @@ export default function BirthDataForm({ onSubmit, isLoading = false }: BirthData
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formData);
+    
+    // Validate and sanitize all inputs
+    if (!validateDate(formData.date)) {
+      alert('Please enter a valid date in YYYY-MM-DD format');
+      return;
+    }
+    
+    if (!validateTime(formData.time)) {
+      alert('Please enter a valid time in HH:MM format');
+      return;
+    }
+    
+    if (!validateCoordinates(formData.latitude, formData.longitude)) {
+      alert('Please enter valid coordinates');
+      return;
+    }
+    
+    // Sanitize the data before submission
+    const sanitizedData = sanitizeBirthData(formData);
+    onSubmit(sanitizedData);
   };
 
   const handleInputChange = (field: keyof FormData, value: string | number) => {

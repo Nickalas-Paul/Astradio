@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import compression from 'compression';
 import dotenv from 'dotenv';
+import { z } from 'zod';
 import { astroCore } from '@astradio/astro-core';
 import { audioEngine, exportEngine, advancedPlaybackEngine } from '@astradio/audio-mappings';
 import { generateMusicNarration, generateModeSpecificNarration, generateDualChartNarration } from '@astradio/audio-mappings';
@@ -38,6 +39,16 @@ import {
   corsOptions
 } from './middleware/security';
 
+import {
+  sanitizeInput,
+  preventSQLInjection,
+  preventXSS,
+  logSuspiciousActivity,
+  validateEnhancedInput,
+  enhancedChartGenerationSchema,
+  enhancedAudioGenerationSchema
+} from './middleware/inputSanitizer';
+
 // Phase 6.3-6.4: Controllers
 import { AuthController } from './auth/authController';
 import { SessionController } from './sessions/sessionController';
@@ -65,21 +76,32 @@ app.use(speedLimiter);
 app.use(requestSizeLimit);
 app.use(express.json({ limit: '10mb' }));
 
+// Enhanced security middleware
+app.use(sanitizeInput);
+app.use(preventSQLInjection);
+app.use(preventXSS);
+app.use(logSuspiciousActivity);
+
 // Health check (no rate limiting)
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 // Daily charts endpoint
-app.get('/api/daily/:date', async (req, res) => {
+app.get('/api/daily/:date', validateEnhancedInput(z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format')
+})), async (req, res) => {
   try {
     const { date } = req.params;
     
-    // Validate date format
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    // Additional validation
+    const parsedDate = new Date(date);
+    if (isNaN(parsedDate.getTime()) || 
+        parsedDate.getFullYear() < 1900 || 
+        parsedDate.getFullYear() > 2100) {
       return res.status(400).json({
         success: false,
-        error: 'Invalid date format. Use YYYY-MM-DD'
+        error: 'Date must be between 1900 and 2100'
       });
     }
 

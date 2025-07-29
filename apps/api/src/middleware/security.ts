@@ -41,15 +41,25 @@ export const enhancedHelmet = helmet({
       styleSrc: ["'self'", "'unsafe-inline'"],
       scriptSrc: ["'self'"],
       imgSrc: ["'self'", "data:", "https:"],
-      connectSrc: ["'self'", "https://api.astradio.com"],
+      connectSrc: ["'self'", "https://api.astradio.com", "https://astradio.vercel.app"],
       fontSrc: ["'self'"],
       objectSrc: ["'none'"],
       mediaSrc: ["'self'"],
       frameSrc: ["'none'"],
+      baseUri: ["'self'"],
+      formAction: ["'self'"],
+      upgradeInsecureRequests: [],
     },
   },
   crossOriginEmbedderPolicy: false,
   crossOriginResourcePolicy: { policy: "cross-origin" },
+  hsts: {
+    maxAge: 31536000,
+    includeSubDomains: true,
+    preload: true
+  },
+  noSniff: true,
+  referrerPolicy: { policy: "strict-origin-when-cross-origin" }
 });
 
 // Input validation schemas using Zod
@@ -219,12 +229,8 @@ export const corsOptions = {
   origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
     const allowedOrigins = [
       'http://localhost:3000',
-      'http://localhost:3001',
-      'http://localhost:3002',
-      'http://localhost:3003',
-      'http://localhost:3004',
-      'https://astradio.com',
-      'https://www.astradio.com'
+      'https://astradio.vercel.app',
+      'https://astradio-staging.vercel.app'
     ];
     
     // Allow requests with no origin (like mobile apps or curl requests)

@@ -1,7 +1,7 @@
 # Daily Validation Script for Astradio
 # Run this script each morning to validate core functionality
 
-Write-Host "🎵 Astradio Daily Validation" -ForegroundColor Cyan
+Write-Host "Astradio Daily Validation" -ForegroundColor Cyan
 Write-Host "=================================" -ForegroundColor Cyan
 
 # Function to test a feature and report status
@@ -12,16 +12,16 @@ function Test-Feature {
         [string]$Description
     )
     
-    Write-Host "`n🔍 Testing: $FeatureName" -ForegroundColor Yellow
+    Write-Host "`nTesting: $FeatureName" -ForegroundColor Yellow
     Write-Host "   $Description" -ForegroundColor Gray
     
     try {
         & $TestScript
-        Write-Host "   ✅ PASS" -ForegroundColor Green
+        Write-Host "   PASS" -ForegroundColor Green
         return $true
     }
     catch {
-        Write-Host "   ❌ FAIL: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "   FAIL: $($_.Exception.Message)" -ForegroundColor Red
         return $false
     }
 }
@@ -98,7 +98,7 @@ Test-Feature -FeatureName "Chart Generation" -Description "Testing astrological 
 }
 
 # Summary Report
-Write-Host "`n📊 Daily Validation Summary" -ForegroundColor Cyan
+Write-Host "`nDaily Validation Summary" -ForegroundColor Cyan
 Write-Host "=============================" -ForegroundColor Cyan
 
 $tests = @(
@@ -118,17 +118,17 @@ $total = $tests.Count
 Write-Host "`nResults: $passed/$total tests passed" -ForegroundColor $(if ($passed -eq $total) { "Green" } else { "Yellow" })
 
 if ($passed -eq $total) {
-    Write-Host "`n🎉 All systems operational! Ready for daily use." -ForegroundColor Green
+    Write-Host "`nAll systems operational! Ready for daily use." -ForegroundColor Green
     Write-Host "`nNext Steps:" -ForegroundColor Cyan
     Write-Host "1. Test one feature per day: Chart > Overlay > Sandbox" -ForegroundColor White
     Write-Host "2. Note any audio behavior or UI issues" -ForegroundColor White
     Write-Host "3. Consider staging deployment setup" -ForegroundColor White
     Write-Host "4. Begin controlled beta testing" -ForegroundColor White
 } else {
-    Write-Host "`n⚠️  Some issues detected. Review failed tests above." -ForegroundColor Yellow
+    Write-Host "`nSome issues detected. Review failed tests above." -ForegroundColor Yellow
 }
 
-Write-Host "`n📝 Manual Testing Checklist:" -ForegroundColor Cyan
+Write-Host "`nManual Testing Checklist:" -ForegroundColor Cyan
 Write-Host "• Chart page: Enter birth data, verify chart displays" -ForegroundColor White
 Write-Host "• Overlay page: Test audio visualization" -ForegroundColor White
 Write-Host "• Sandbox page: Test audio generation and playback" -ForegroundColor White
@@ -136,4 +136,4 @@ Write-Host "• Audio controls: Test play/pause/volume" -ForegroundColor White
 Write-Host "• Text generation: Verify AI narration quality" -ForegroundColor White
 Write-Host "• Responsive design: Test on different screen sizes" -ForegroundColor White
 
-Write-Host "`n🚀 Ready for the next phase!" -ForegroundColor Green 
+Write-Host "`nReady for the next phase!" -ForegroundColor Green 
