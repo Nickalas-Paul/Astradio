@@ -10,6 +10,9 @@ COPY . .
 # Install dependencies (this will handle workspace packages)
 RUN npm install
 
+# Build all workspace packages first
+RUN npm run build:all
+
 # Change to the API directory
 WORKDIR /usr/src/app/apps/api
 
