@@ -248,6 +248,7 @@ export default function ChartPage() {
                   <div className="chart-container" style={{ width: '100%', maxWidth: '720px', margin: '0 auto' }}>
                     <UnifiedAstrologicalWheel
                       planets={Object.entries(chart.planets).map(([name, data]) => ({
+                        id: name.toLowerCase(),
                         name,
                         symbol: name, // Will be mapped to proper symbol in component
                         angle: data.longitude,

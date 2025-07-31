@@ -5,6 +5,7 @@ import GenreDropdown from './GenreDropdown';
 import UniversalChartWheel from './UniversalChartWheel';
 
 interface Planet {
+  id: string;
   name: string;
   symbol: string;
   angle: number;

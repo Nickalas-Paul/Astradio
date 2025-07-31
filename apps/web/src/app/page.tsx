@@ -109,6 +109,7 @@ export default function HomePage() {
       
       // Convert planets object to array format expected by the wheel component
       const planetsArray = Object.entries(dailyChart.planets || {}).map(([name, planet]: [string, any]) => ({
+        id: name.toLowerCase(),
         name: name,
         symbol: getPlanetSymbol(name),
         angle: planet.longitude || 0,
