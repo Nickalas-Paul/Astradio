@@ -76,13 +76,15 @@ if (!process.env.SESSION_SECRET) {
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Ensure database directory exists
+// Ensure database directory exists (only in development)
 import fs from 'fs';
 import path from 'path';
 
-const dataDir = path.join(process.cwd(), 'data');
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
+if (process.env.NODE_ENV !== 'production') {
+  const dataDir = path.join(process.cwd(), 'data');
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+  }
 }
 
 // Security middleware (order matters!)
@@ -107,14 +109,6 @@ app.get('/health', (req, res) => {
   try {
     // Check if database is accessible
     const dbPath = process.env.DATABASE_URL || './data/astradio.db';
-    const fs = require('fs');
-    const path = require('path');
-    
-    // Ensure data directory exists
-    const dataDir = path.dirname(dbPath);
-    if (!fs.existsSync(dataDir)) {
-      fs.mkdirSync(dataDir, { recursive: true });
-    }
     
     res.json({ 
       status: 'ok', 
