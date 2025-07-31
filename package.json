@@ -9,6 +9,7 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev --parallel",
+    "start": "cd apps/api && npm start",
     "start-web": "cd apps/web && npm run dev",
     "start-api": "cd apps/api && npm run dev"
   },

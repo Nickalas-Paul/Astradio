@@ -271,7 +271,7 @@ export default function HomePage() {
               <UnifiedAudioControls
                 chartData={dailyChart}
                 genre={selectedGenre || 'ambient'}
-                mode="daily"
+                mode="moments"
                 onPlay={handlePlay}
                 onStop={handleStop}
                 onPause={handlePause}

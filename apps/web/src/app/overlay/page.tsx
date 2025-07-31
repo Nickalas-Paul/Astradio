@@ -180,7 +180,7 @@ export default function OverlayPage() {
         enhanced_metadata: {
           chart1_planets: Object.keys(chart1.planets || {}).length,
           chart2_planets: Object.keys(chart2.planets || {}).length,
-          total_aspects: (chart1.aspects?.length || 0) + (chart2.aspects?.length || 0),
+          total_aspects: 0, // Aspects not available in current chart structure
           harmony_score: calculateHarmonyScore(chart1, chart2),
           compatibility_rating: calculateCompatibilityRating(chart1, chart2)
         }
@@ -552,11 +552,7 @@ export default function OverlayPage() {
         {canGenerateOverlay && (
           <div className="mb-8 w-full max-w-lg mx-auto">
             <UnifiedAudioControls
-              chartData={{
-                ...charts.chart1,
-                overlay_chart: charts.chart2,
-                mode: 'overlay'
-              }}
+              chartData={charts.chart1!}
               genre={selectedGenre || 'ambient'}
               mode="overlay"
               onPlay={handlePlay}

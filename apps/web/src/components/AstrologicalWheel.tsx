@@ -30,6 +30,7 @@ interface AstrologicalWheelProps {
   showHighlight?: boolean;
   onHouseClick?: (houseNumber: number) => void;
   onGenreChange?: (genre: string) => void;
+  selectedGenre?: string;
 }
 
 export default function AstrologicalWheel({
@@ -40,7 +41,8 @@ export default function AstrologicalWheel({
   currentHouse = 1,
   showHighlight = false,
   onHouseClick,
-  onGenreChange
+  onGenreChange,
+  selectedGenre = 'ambient'
 }: AstrologicalWheelProps) {
   const centerX = size / 2;
   const centerY = size / 2;
@@ -66,7 +68,10 @@ export default function AstrologicalWheel({
       {/* Genre Dropdown - positioned absolutely in top-left corner */}
       {onGenreChange && (
         <div className="absolute top-2 left-2 z-10">
-          <GenreDropdown onGenreChange={onGenreChange} />
+          <GenreDropdown 
+            selectedGenre={selectedGenre}
+            onGenreChange={onGenreChange} 
+          />
         </div>
       )}
       
