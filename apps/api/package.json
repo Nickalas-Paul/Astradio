@@ -25,9 +25,9 @@
     "hpp": "^0.2.3",
     "express-mongo-sanitize": "^2.2.0",
     "xss-clean": "^0.1.4",
-    "@astradio/astro-core": "*",
-    "@astradio/audio-mappings": "*",
-    "@astradio/types": "*"
+    "@astradio/astro-core": "file:../../packages/astro-core",
+    "@astradio/audio-mappings": "file:../../packages/audio-mappings",
+    "@astradio/types": "file:../../packages/types"
   },
   "devDependencies": {
     "@types/express": "^4.17.21",
