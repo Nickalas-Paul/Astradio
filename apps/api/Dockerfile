@@ -4,19 +4,27 @@ FROM node:18
 # Create app directory
 WORKDIR /usr/src/app
 
-# Copy the entire monorepo for workspace dependencies
-COPY . .
+# Copy package files first for better caching
+COPY package*.json ./
+COPY turbo.json ./
 
-# Install dependencies (this will handle workspace packages)
+# Copy workspace package files
+COPY packages/*/package*.json ./packages/*/
+COPY apps/*/package*.json ./apps/*/
+
+# Install dependencies
 RUN npm install
 
-# Build all workspace packages first
-RUN npm run build:all
+# Copy source code
+COPY . .
+
+# Build packages in dependency order
+RUN npm run build
 
 # Change to the API directory
 WORKDIR /usr/src/app/apps/api
 
-# Build the TypeScript app
+# Build the API (packages are already built)
 RUN npm run build
 
 # Expose port
