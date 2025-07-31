@@ -154,14 +154,14 @@ export default function LocationAutocomplete({
         onFocus={handleInputFocus}
         onBlur={handleInputBlur}
         placeholder={placeholder}
-        className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-white placeholder-white/50"
+        className="form-input w-full"
         autoComplete="off"
       />
       
       {/* Loading indicator */}
       {isLoading && (
         <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-400"></div>
+          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-emerald-400"></div>
         </div>
       )}
 
@@ -169,21 +169,21 @@ export default function LocationAutocomplete({
       {isOpen && suggestions.length > 0 && (
         <div
           ref={dropdownRef}
-          className="absolute z-50 w-full mt-1 bg-white/95 backdrop-blur-md rounded-lg border border-white/20 shadow-xl max-h-60 overflow-y-auto"
+          className="absolute z-50 w-full mt-2 glass-morphism-strong rounded-xl border border-emerald-500/20 shadow-xl max-h-60 overflow-y-auto"
         >
           {suggestions.map((location, index) => (
             <button
               key={`${location.name}-${index}`}
               type="button"
               onClick={() => handleSelectLocation(location)}
-              className={`w-full px-4 py-3 text-left hover:bg-purple-100/20 transition-colors duration-150 ${
-                index === selectedIndex ? 'bg-purple-100/20' : ''
+              className={`w-full px-4 py-3 text-left hover:bg-emerald-500/10 transition-colors duration-150 font-mystical ${
+                index === selectedIndex ? 'bg-emerald-500/20' : ''
               }`}
             >
-              <div className="font-medium text-gray-900 leading-[1.25] tracking-tight">
+              <div className="font-medium text-white leading-relaxed tracking-wide">
                 {location.name}
               </div>
-              <div className="text-sm text-gray-600 leading-[1.4] tracking-normal">
+              <div className="text-sm text-gray-300 leading-relaxed tracking-wide">
                 {location.city}, {location.country}
               </div>
             </button>
@@ -193,8 +193,8 @@ export default function LocationAutocomplete({
 
       {/* No results message */}
       {isOpen && !isLoading && suggestions.length === 0 && query.trim().length >= 2 && (
-        <div className="absolute z-50 w-full mt-1 bg-white/95 backdrop-blur-md rounded-lg border border-white/20 shadow-xl p-4">
-          <div className="text-gray-600 text-center leading-[1.4] tracking-normal">
+        <div className="absolute z-50 w-full mt-2 glass-morphism-strong rounded-xl border border-emerald-500/20 shadow-xl p-4">
+          <div className="text-gray-300 text-center leading-relaxed tracking-wide font-mystical">
             No locations found. Try a different search term.
           </div>
         </div>

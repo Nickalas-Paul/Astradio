@@ -1,24 +1,35 @@
-import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
-import './globals.css'
-
-const inter = Inter({ subsets: ['latin'] })
+import type { Metadata } from 'next';
+import './globals.css';
+import { GenreProvider } from '../context/GenreContext';
+import { ThemeProvider } from '../context/ThemeContext';
+import { AuthProvider } from '../context/AuthContext';
+import { SubscriptionProvider } from '../context/SubscriptionContext';
 
 export const metadata: Metadata = {
-  title: 'Astradio - Life\'s Soundtrack',
-  description: 'Transform astrological charts into personalized musical experiences',
-}
+  title: 'Astradio - Astrological Music Generation',
+  description: 'Transform your astrological chart into unique musical compositions',
+};
 
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
   return (
     <html lang="en">
-      <body className={`${inter.className} bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white min-h-screen`}>
-        {children}
+      <body>
+        <AuthProvider>
+          <SubscriptionProvider>
+            <ThemeProvider>
+              <GenreProvider>
+                <div className="main-container">
+                  {children}
+                </div>
+              </GenreProvider>
+            </ThemeProvider>
+          </SubscriptionProvider>
+        </AuthProvider>
       </body>
     </html>
-  )
+  );
 } 

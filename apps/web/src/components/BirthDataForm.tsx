@@ -74,42 +74,42 @@ export default function BirthDataForm({ onSubmit, isLoading = false }: BirthData
   };
 
   return (
-    <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20 glow">
-      <h2 className="text-2xl font-bold mb-6 text-center glow-text leading-[1.2] tracking-tight">
+    <div className="glass-morphism-strong rounded-3xl p-8 border border-emerald-500/20">
+      <h2 className="section-header text-xl mb-8">
         Enter Your Birth Data
       </h2>
       
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label className="block text-sm font-medium mb-2 leading-[1.25] tracking-normal">
+            <label className="form-label">
               Birth Date
             </label>
             <input
               type="date"
               value={formData.date}
               onChange={(e) => handleInputChange('date', e.target.value)}
-              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-white placeholder-white/50"
+              className="form-input w-full"
               required
             />
           </div>
           
           <div>
-            <label className="block text-sm font-medium mb-2 leading-[1.25] tracking-normal">
+            <label className="form-label">
               Birth Time
             </label>
             <input
               type="time"
               value={formData.time}
               onChange={(e) => handleInputChange('time', e.target.value)}
-              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-white"
+              className="form-input w-full"
               required
             />
           </div>
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-2 leading-[1.25] tracking-normal">
+          <label className="form-label">
             Location
           </label>
           <LocationAutocomplete
@@ -119,32 +119,15 @@ export default function BirthDataForm({ onSubmit, isLoading = false }: BirthData
           />
         </div>
 
-        {/* Auto-filled coordinates display */}
+        {/* Location confirmation - simplified display */}
         {selectedLocation.name && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-white/5 rounded-lg border border-white/10">
-            <div>
-              <label className="block text-sm font-medium mb-1 leading-[1.25] tracking-normal text-gray-300">
-                Latitude
-              </label>
-              <div className="text-white leading-[1.4] tracking-normal">
-                {selectedLocation.latitude.toFixed(6)}
+          <div className="p-4 glass-morphism rounded-xl border border-emerald-500/10">
+            <div className="text-center">
+              <div className="text-emerald-400 text-sm mb-2">📍 Selected Location</div>
+              <div className="text-white font-mystical leading-relaxed tracking-wide">
+                {selectedLocation.name}
               </div>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium mb-1 leading-[1.25] tracking-normal text-gray-300">
-                Longitude
-              </label>
-              <div className="text-white leading-[1.4] tracking-normal">
-                {selectedLocation.longitude.toFixed(6)}
-              </div>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium mb-1 leading-[1.25] tracking-normal text-gray-300">
-                Timezone
-              </label>
-              <div className="text-white leading-[1.4] tracking-normal">
+              <div className="text-gray-400 text-xs mt-1">
                 UTC{selectedLocation.timezone >= 0 ? '+' : ''}{selectedLocation.timezone}
               </div>
             </div>
@@ -154,11 +137,11 @@ export default function BirthDataForm({ onSubmit, isLoading = false }: BirthData
         <button
           type="submit"
           disabled={isLoading || !formData.date}
-          className="w-full mt-6 px-6 py-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-semibold text-white transition-all duration-200 transform hover:scale-105 glow font-sans text-base leading-none tracking-tight align-middle"
+          className="w-full mt-8 px-8 py-4 btn-cosmic rounded-xl font-semibold text-white transition-all duration-200 transform hover:scale-105 glow font-mystical text-base tracking-wide disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isLoading ? (
             <span className="flex items-center justify-center">
-              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
               Generating Chart...
             </span>
           ) : (

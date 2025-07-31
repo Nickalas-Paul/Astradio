@@ -11,6 +11,9 @@ interface AnimatedChartWheelProps {
   currentHouse: number;
   duration: number; // Total duration in seconds
   onHouseChange?: (house: number) => void;
+  showHighlight?: boolean;
+  onHouseClick?: (houseNumber: number) => void;
+  onGenreChange?: (genre: string) => void;
 }
 
 // Zodiac glyphs
@@ -48,7 +51,10 @@ export default function AnimatedChartWheel({
   isPlaying, 
   currentHouse, 
   duration,
-  onHouseChange 
+  onHouseChange,
+  showHighlight = false,
+  onHouseClick,
+  onGenreChange
 }: AnimatedChartWheelProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const animationRef = useRef<number | undefined>(undefined);

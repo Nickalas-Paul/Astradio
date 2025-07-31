@@ -1,13 +1,19 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import ChartDisplay from '../../components/ChartDisplay';
-import AudioControls from '../../components/AudioControls';
+import UnifiedAudioControls from '../../components/UnifiedAudioControls';
 import Navigation from '../../components/Navigation';
-import SandboxVisualizer from '../../components/SandboxVisualizer';
-import ExportShare from '../../components/ExportShare';
+import SandboxComposer from '../../components/SandboxComposer';
+import SandboxControls from '../../components/SandboxControls';
+import BlankChartWheel from '../../components/BlankChartWheel';
 import GeneratedTextDisplay from '../../components/GeneratedTextDisplay';
-import { AstroChart, AudioStatus } from '../../types';
+import ChartLayoutWrapper from '../../components/ChartLayoutWrapper';
+import GenreDropdown from '../../components/GenreDropdown';
+import { AstroChart, AudioStatus, AspectData } from '../../types';
+import { useGenre } from '../../context/GenreContext';
+import { sandboxInterpretationService, PlanetPlacement, PlacementInterpretation } from '../../lib/sandboxInterpretationService';
+import toneAudioService from '../../lib/toneAudioService';
 
 export default function SandboxPage() {
   const [chart, setChart] = useState<AstroChart | null>(null);
@@ -19,6 +25,7 @@ export default function SandboxPage() {
     currentSession: null,
     error: null
   });
+  const [detectedAspects, setDetectedAspects] = useState<AspectData[]>([]);
   const [audioConfig, setAudioConfig] = useState({
     tempo: 120,
     duration: 60,
@@ -26,8 +33,50 @@ export default function SandboxPage() {
     reverb: 0.3,
     delay: 0.1
   });
+  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
+  const [placementInterpretations, setPlacementInterpretations] = useState<PlacementInterpretation[]>([]);
+  const [currentPlacement, setCurrentPlacement] = useState<PlacementInterpretation | null>(null);
+
+  const { selectedGenre, getRandomGenre } = useGenre();
 
   const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
+  const handleGenreChange = (newGenre: string) => {
+    // Update genre context
+    // Note: This would need to be implemented in the genre context
+    console.log('Genre changed to:', newGenre);
+  };
+
+  // Set up Tone.js audio service callbacks
+  useEffect(() => {
+    toneAudioService.onTimeUpdateCallback((time) => {
+      setAudioStatus(prev => ({
+        ...prev,
+        currentSession: prev.currentSession ? {
+          ...prev.currentSession,
+          currentTime: time
+        } : null
+      }));
+    });
+
+    toneAudioService.onErrorCallback((error) => {
+      setAudioStatus(prev => ({ ...prev, isLoading: false, error }));
+    });
+
+    return () => {
+      toneAudioService.stop();
+    };
+  }, []);
+
+  // Monitor audio service status
+  useEffect(() => {
+    const checkAudioStatus = () => {
+      setIsAudioPlaying(toneAudioService.getIsPlaying());
+    };
+
+    const interval = setInterval(checkAudioStatus, 100);
+    return () => clearInterval(interval);
+  }, []);
 
   const createMockChart = () => {
     const mockChart: AstroChart = {
@@ -65,241 +114,421 @@ export default function SandboxPage() {
     setChart(mockChart);
   };
 
-  const handleAudioStatusChange = (status: AudioStatus) => {
-    setAudioStatus(status);
+  const handleChartUpdate = async (updatedChart: AstroChart) => {
+    setChart(updatedChart);
+    
+    // Generate interpretations for new placements
+    if (updatedChart.planets) {
+      const placements: PlanetPlacement[] = Object.entries(updatedChart.planets).map(([planet, data]) => ({
+        planet,
+        house: data.house,
+        sign: data.sign.name,
+        degree: data.sign.degree
+      }));
+      
+      const interpretations = placements.map(placement => 
+        sandboxInterpretationService.generatePlacementInterpretation(placement)
+      );
+      
+      setPlacementInterpretations(interpretations);
+    }
+
+    // Generate real-time audio for the updated chart
+    if (updatedChart.planets && Object.keys(updatedChart.planets).length > 0) {
+      await generateSandboxAudio(updatedChart);
+    }
   };
 
-  const handlePlay = () => {
-    // TODO: Implement play functionality
-    console.log('Play audio');
+  const generateSandboxAudio = async (chartData: AstroChart) => {
+    if (!chartData) return;
+
+    try {
+      // Stop any existing audio
+      toneAudioService.stop();
+
+      // Generate note events for the sandbox chart with enhanced processing
+      const genre = selectedGenre || getRandomGenre();
+      const enhancedChartData = {
+        ...chartData,
+        sandbox_metadata: {
+          total_planets: Object.keys(chartData.planets || {}).length,
+          active_aspects: detectedAspects.length,
+          complexity_score: calculateComplexityScore(chartData),
+          energy_level: calculateEnergyLevel(chartData),
+          harmonic_density: calculateHarmonicDensity(chartData)
+        }
+      };
+
+      const noteEvents = toneAudioService.generateNoteEvents(enhancedChartData, genre);
+      
+      if (noteEvents.length === 0) {
+        console.warn('No musical events generated from sandbox chart');
+        return;
+      }
+
+      // Apply real-time sandbox processing
+      const processedEvents = await applySandboxProcessing(noteEvents, enhancedChartData, genre);
+
+      // Play the sandbox note events with enhanced configuration
+      const success = await toneAudioService.playNoteEvents(processedEvents);
+      
+      if (success) {
+        setAudioStatus(prev => ({ 
+          ...prev, 
+          isLoading: false,
+          isPlaying: true,
+          currentSession: {
+            id: `sandbox_session_${Date.now()}`,
+            chartId: 'sandbox_chart',
+            configuration: {
+              mode: 'sandbox',
+              duration: toneAudioService.getDuration(),
+              genre: genre as any,
+              complexity_score: enhancedChartData.sandbox_metadata.complexity_score,
+              energy_level: enhancedChartData.sandbox_metadata.energy_level,
+              harmonic_density: enhancedChartData.sandbox_metadata.harmonic_density
+            },
+            isPlaying: true,
+            currentHouse: 1,
+            duration: toneAudioService.getDuration(),
+            genre: genre as any
+          }
+        }));
+        console.log('Sandbox audio generated and playing successfully');
+      }
+    } catch (error) {
+      console.error('Failed to generate sandbox audio:', error);
+      // Don't show error for sandbox - it's experimental
+    }
+  };
+
+  // Calculate complexity score for sandbox
+  const calculateComplexityScore = (chartData: AstroChart): number => {
+    const planets = Object.keys(chartData.planets || {});
+    const aspects = detectedAspects.length;
+    const houses = Object.keys(chartData.houses || {});
+    
+    // Complexity based on number of active elements
+    const planetComplexity = planets.length * 0.2;
+    const aspectComplexity = aspects * 0.3;
+    const houseComplexity = houses.length * 0.1;
+    
+    return Math.min(planetComplexity + aspectComplexity + houseComplexity, 1);
+  };
+
+  // Calculate energy level
+  const calculateEnergyLevel = (chartData: AstroChart): number => {
+    const planets = Object.values(chartData.planets || {});
+    let energyLevel = 0;
+    
+    planets.forEach(planet => {
+      // Fire signs have high energy
+      if (planet.sign?.element === 'Fire') energyLevel += 0.3;
+      // Air signs have medium energy
+      else if (planet.sign?.element === 'Air') energyLevel += 0.2;
+      // Earth signs have low energy
+      else if (planet.sign?.element === 'Earth') energyLevel += 0.1;
+      // Water signs have medium-low energy
+      else if (planet.sign?.element === 'Water') energyLevel += 0.15;
+    });
+    
+    return Math.min(energyLevel, 1);
+  };
+
+  // Calculate harmonic density
+  const calculateHarmonicDensity = (chartData: AstroChart): number => {
+    const aspects = detectedAspects;
+    let harmonicDensity = 0;
+    
+    aspects.forEach(aspect => {
+      switch (aspect.type) {
+        case 'conjunction':
+          harmonicDensity += 0.4;
+          break;
+        case 'trine':
+          harmonicDensity += 0.3;
+          break;
+        case 'sextile':
+          harmonicDensity += 0.2;
+          break;
+        case 'square':
+          harmonicDensity += 0.1;
+          break;
+        case 'opposition':
+          harmonicDensity += 0.25;
+          break;
+      }
+    });
+    
+    return Math.min(harmonicDensity, 1);
+  };
+
+  // Apply sandbox-specific processing
+  const applySandboxProcessing = async (noteEvents: any[], chartData: AstroChart, genre: string): Promise<any[]> => {
+    const processedEvents = noteEvents.map(event => {
+      const enhancedEvent = { ...event };
+      
+      // Apply complexity-based modifications
+      const complexity = calculateComplexityScore(chartData);
+      const energy = calculateEnergyLevel(chartData);
+      const harmony = calculateHarmonicDensity(chartData);
+      
+      // Adjust velocity based on energy level
+      enhancedEvent.velocity = Math.min(event.velocity * (0.8 + energy * 0.4), 0.9);
+      
+      // Adjust duration based on complexity
+      enhancedEvent.duration = event.duration * (1 + complexity * 0.3);
+      
+      // Apply genre-specific enhancements
+      switch (genre) {
+        case 'ambient':
+          enhancedEvent.velocity *= 0.8;
+          enhancedEvent.duration *= 1.2;
+          break;
+        case 'techno':
+          enhancedEvent.velocity *= 1.2;
+          enhancedEvent.duration *= 0.8;
+          break;
+        case 'classical':
+          enhancedEvent.velocity *= 1.1;
+          enhancedEvent.duration *= 1.1;
+          break;
+        case 'experimental':
+          // Add randomization for experimental genre
+          enhancedEvent.velocity *= (0.7 + Math.random() * 0.6);
+          enhancedEvent.duration *= (0.8 + Math.random() * 0.4);
+          break;
+      }
+      
+      return enhancedEvent;
+    });
+    
+    return processedEvents;
+  };
+
+  const handleAspectsDetected = (aspects: AspectData[]) => {
+    setDetectedAspects(aspects);
+  };
+
+  const handlePlacementSelect = (placement: PlacementInterpretation) => {
+    setCurrentPlacement(placement);
+  };
+
+  const handleReset = () => {
+    setChart(null);
+    setDetectedAspects([]);
+    setPlacementInterpretations([]);
+    setCurrentPlacement(null);
+    toneAudioService.stop();
+    setIsAudioPlaying(false);
+  };
+
+  const handlePlay = async () => {
+    if (!chart) {
+      setError('No chart available. Please initialize a chart first.');
+      return;
+    }
+    
+    await generateSandboxAudio(chart);
   };
 
   const handleStop = () => {
-    // TODO: Implement stop functionality
-    console.log('Stop audio');
+    toneAudioService.stop();
+    setAudioStatus(prev => ({ ...prev, isPlaying: false }));
   };
 
   const handlePause = () => {
-    // TODO: Implement pause functionality
-    console.log('Pause audio');
-  };
-
-  const handleSandboxAudio = async () => {
-    if (!chart) {
-      setError('No chart available for audio generation');
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch(`${API_BASE}/api/audio/sandbox`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          chart_data: chart,
-          configuration: audioConfig,
-          mode: 'sandbox'
-        }),
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        setAudioStatus(prev => ({
-          ...prev,
-          isPlaying: true,
-          isLoading: false,
-          currentSession: data.data.session,
-          error: null
-        }));
-      } else {
-        throw new Error(data.error || 'Failed to generate sandbox audio');
-      }
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'Failed to generate sandbox audio');
-    } finally {
-      setIsLoading(false);
-    }
+    toneAudioService.pause();
+    setAudioStatus(prev => ({ ...prev, isPlaying: false }));
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 text-white">
+    <ChartLayoutWrapper
+      title="Astrological Sandbox"
+      subtitle="Experiment with charts and create custom soundscapes through interactive planetary placement"
+      genre={selectedGenre || 'ambient'}
+      showGenre={true}
+    >
       <Navigation />
-      <div className="container mx-auto px-4 py-8">
+      
+      <div className="container mx-auto px-6 py-12">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold mb-4 glow-text">
-            Astrological Sandbox
-          </h1>
-          <p className="text-xl text-gray-300">
-            Experiment with charts and create custom soundscapes
+          <p className="text-lg text-gray-300 mb-8 leading-relaxed tracking-wide font-mystical max-w-3xl mx-auto">
+            Drag planets, adjust placements, and hear real-time audio generation
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Sandbox Controls */}
-          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20">
-                          <h2 className="text-2xl font-bold mb-6 text-center glow-text">
-                Sandbox Controls
-              </h2>
-            
-            <div className="space-y-4">
-              <button
-                onClick={createMockChart}
-                className="w-full px-6 py-4 bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 rounded-lg font-semibold text-white transition-all duration-200 transform hover:scale-105 glow"
-              >
-                Create Mock Chart
-              </button>
+        {/* Initialize Chart */}
+        {!chart && (
+          <div className="glass-morphism-strong rounded-3xl p-8 border border-emerald-500/20 max-w-2xl mx-auto mb-8 text-center">
+            <h2 className="section-header text-2xl mb-6">
+              Start Your Composition
+            </h2>
+            <p className="text-gray-300 mb-8 leading-relaxed tracking-wide font-mystical">
+              Create a base chart to begin your astrological audio exploration
+            </p>
+            <button
+              onClick={createMockChart}
+              className="px-8 py-4 btn-cosmic rounded-xl font-semibold text-white transition-all duration-200 transform hover:scale-105 glow font-mystical text-base tracking-wide"
+            >
+              Initialize Chart
+            </button>
+          </div>
+        )}
 
-              {/* Audio Configuration Controls */}
-              {chart && (
-                <div className="p-4 bg-white/5 rounded-lg border border-white/10">
-                  <h3 className="text-lg font-semibold mb-3 text-purple-300">Audio Configuration</h3>
-                  
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-sm font-medium mb-1 text-gray-300">Tempo (BPM)</label>
-                      <input
-                        type="range"
-                        min="60"
-                        max="200"
-                        value={audioConfig.tempo}
-                        onChange={(e) => setAudioConfig(prev => ({ ...prev, tempo: parseInt(e.target.value) }))}
-                        className="w-full"
-                      />
-                      <span className="text-xs text-gray-400">{audioConfig.tempo} BPM</span>
-                    </div>
+        {/* Genre Selection */}
+        <div className="mb-8 w-full max-w-md mx-auto">
+          <GenreDropdown
+            selectedGenre={selectedGenre || 'ambient'}
+            onGenreChange={handleGenreChange}
+            disabled={isLoading}
+          />
+        </div>
 
-                    <div>
-                      <label className="block text-sm font-medium mb-1 text-gray-300">Duration (seconds)</label>
-                      <input
-                        type="range"
-                        min="30"
-                        max="300"
-                        value={audioConfig.duration}
-                        onChange={(e) => setAudioConfig(prev => ({ ...prev, duration: parseInt(e.target.value) }))}
-                        className="w-full"
-                      />
-                      <span className="text-xs text-gray-400">{audioConfig.duration}s</span>
-                    </div>
+        {/* Sandbox Composer */}
+        {chart && (
+          <div className="mb-12">
+            <SandboxComposer 
+              onChartUpdate={handleChartUpdate}
+              currentChart={chart}
+              onAspectsDetected={handleAspectsDetected}
+              onPlacementSelect={handlePlacementSelect}
+            />
+          </div>
+        )}
 
-                    <div>
-                      <label className="block text-sm font-medium mb-1 text-gray-300">Volume</label>
-                      <input
-                        type="range"
-                        min="0"
-                        max="1"
-                        step="0.1"
-                        value={audioConfig.volume}
-                        onChange={(e) => setAudioConfig(prev => ({ ...prev, volume: parseFloat(e.target.value) }))}
-                        className="w-full"
-                      />
-                      <span className="text-xs text-gray-400">{Math.round(audioConfig.volume * 100)}%</span>
-                    </div>
+        {/* Unified Audio Controls */}
+        {chart && (
+          <div className="mb-8 w-full max-w-lg mx-auto">
+            <UnifiedAudioControls
+              chartData={chart}
+              genre={selectedGenre || 'ambient'}
+              mode="sandbox"
+              onPlay={handlePlay}
+              onStop={handleStop}
+              onPause={handlePause}
+              showExport={true}
+              audioStatus={audioStatus}
+            />
+          </div>
+        )}
 
-                    <div>
-                      <label className="block text-sm font-medium mb-1 text-gray-300">Reverb</label>
-                      <input
-                        type="range"
-                        min="0"
-                        max="1"
-                        step="0.1"
-                        value={audioConfig.reverb}
-                        onChange={(e) => setAudioConfig(prev => ({ ...prev, reverb: parseFloat(e.target.value) }))}
-                        className="w-full"
-                      />
-                      <span className="text-xs text-gray-400">{Math.round(audioConfig.reverb * 100)}%</span>
-                    </div>
+        {/* Sandbox Controls */}
+        {chart && (
+          <div className="mb-8">
+            <SandboxControls
+              chart={chart}
+              aspects={detectedAspects}
+              audioConfig={audioConfig}
+              onReset={handleReset}
+              onChartUpdate={handleChartUpdate}
+              isAudioPlaying={isAudioPlaying}
+              onAudioStatusChange={(isPlaying) => setIsAudioPlaying(isPlaying)}
+            />
+          </div>
+        )}
 
-                    <div>
-                      <label className="block text-sm font-medium mb-1 text-gray-300">Delay</label>
-                      <input
-                        type="range"
-                        min="0"
-                        max="1"
-                        step="0.1"
-                        value={audioConfig.delay}
-                        onChange={(e) => setAudioConfig(prev => ({ ...prev, delay: parseFloat(e.target.value) }))}
-                        className="w-full"
-                      />
-                      <span className="text-xs text-gray-400">{Math.round(audioConfig.delay * 100)}%</span>
-                    </div>
-
-                    <button
-                      onClick={handleSandboxAudio}
-                      disabled={isLoading || audioStatus.isPlaying}
-                      className="w-full px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-semibold text-white transition-all duration-200 transform hover:scale-105"
-                    >
-                      {isLoading ? (
-                        <span className="flex items-center justify-center">
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                          Generating...
-                        </span>
-                      ) : (
-                        'Generate Sandbox Audio'
-                      )}
-                    </button>
+        {/* Chart Display and Interpretations */}
+        {chart ? (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+            <div className="lg:col-span-2">
+              <ChartDisplay chart={chart} />
+            </div>
+            <div>
+              {/* Placement Interpretations */}
+              {placementInterpretations.length > 0 && (
+                <div className="glass-morphism-strong rounded-2xl p-6 border border-emerald-500/20 mb-6">
+                  <h3 className="section-header text-lg mb-4">Placement Interpretations</h3>
+                  <div className="space-y-4 max-h-96 overflow-y-auto">
+                    {placementInterpretations.map((interpretation, index) => (
+                      <div
+                        key={index}
+                        className="p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/10 cursor-pointer hover:bg-emerald-500/20 transition-colors"
+                        onClick={() => setCurrentPlacement(interpretation)}
+                      >
+                        <div className="flex items-center space-x-2 mb-2">
+                          <span className="text-sm font-semibold text-emerald-300">
+                            {interpretation.planet}
+                          </span>
+                          <span className="text-xs text-gray-400">
+                            House {interpretation.house} ({interpretation.sign})
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-300 mb-2 line-clamp-3">
+                          {interpretation.meaning}
+                        </p>
+                        <div className="flex flex-wrap gap-1">
+                          {interpretation.keywords.slice(0, 4).map((keyword, idx) => (
+                            <span
+                              key={idx}
+                              className="px-2 py-1 bg-emerald-500/20 rounded text-xs text-emerald-300"
+                            >
+                              {keyword}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
 
-              <div className="p-4 bg-white/5 rounded-lg border border-white/10">
-                <h3 className="text-lg font-semibold mb-3 text-purple-300">Coming Soon</h3>
-                <ul className="space-y-2 text-sm text-gray-300">
-                  <li>• Manual planet position editing</li>
-                  <li>• Custom frequency mappings</li>
-                  <li>• Real-time audio parameter adjustment</li>
-                  <li>• Save and load custom configurations</li>
-                </ul>
-              </div>
+              {/* Current Placement Detail */}
+              {currentPlacement && (
+                <div className="glass-morphism-strong rounded-2xl p-6 border border-emerald-500/20">
+                  <h3 className="section-header text-lg mb-4">Detailed Interpretation</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="text-sm font-semibold text-emerald-300 mb-2">
+                        {currentPlacement.planet} in {currentPlacement.sign}
+                      </h4>
+                      <p className="text-sm text-gray-300 leading-relaxed">
+                        {currentPlacement.meaning}
+                      </p>
+                    </div>
+                    <div>
+                      <h5 className="text-xs font-semibold text-emerald-300 mb-1">Musical Influence</h5>
+                      <p className="text-xs text-gray-300">
+                        {currentPlacement.musicalInfluence}
+                      </p>
+                    </div>
+                    <div>
+                      <h5 className="text-xs font-semibold text-emerald-300 mb-1">Keywords</h5>
+                      <div className="flex flex-wrap gap-1">
+                        {currentPlacement.keywords.map((keyword, idx) => (
+                          <span
+                            key={idx}
+                            className="px-2 py-1 bg-emerald-500/20 rounded text-xs text-emerald-300"
+                          >
+                            {keyword}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
-
-          {/* Chart Display and Audio */}
-          <div>
-            {chart ? (
-              <>
-                <ChartDisplay chart={chart} />
-                <div className="mt-6">
-                  <AudioControls 
-                    audioStatus={audioStatus}
-                    onPlay={handlePlay}
-                    onStop={handleStop}
-                    onPause={handlePause}
-                  />
-                </div>
-              </>
-            ) : (
-              <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20 text-center">
-                <h3 className="text-xl font-semibold mb-4 text-purple-300">
-                  Ready to Create
-                </h3>
-                <p className="text-gray-300 mb-6">
-                  Click "Create Mock Chart" to start experimenting with astrological audio generation
-                </p>
-                <button
-                  onClick={createMockChart}
-                  className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-lg font-semibold text-white transition-all duration-200 transform hover:scale-105"
-                >
-                  Start Creating
-                </button>
-              </div>
-            )}
+        ) : (
+          <div className="text-center py-12">
+            <BlankChartWheel 
+              size={400}
+              message="Start by dragging planets or selecting a house to place them"
+              showGrid={true}
+            />
           </div>
-        </div>
+        )}
 
         {error && (
-          <div className="mt-4 p-4 bg-red-500/20 border border-red-500/30 rounded-lg">
-            <p className="text-red-300">❌ {error}</p>
+          <div className="mt-6 p-6 bg-red-500/20 border border-red-500/30 rounded-xl max-w-4xl mx-auto">
+            <p className="text-red-300 font-mystical text-center">{error}</p>
           </div>
         )}
 
         {/* AI Interpretation */}
         {chart && (
-          <div className="mt-8">
+          <div className="mt-12">
             <GeneratedTextDisplay 
               chart={chart}
               session={audioStatus.currentSession}
@@ -307,32 +536,7 @@ export default function SandboxPage() {
             />
           </div>
         )}
-
-        {/* Audio Visualizer */}
-        <div className="mt-8">
-          <div className="text-center mb-4">
-            <h2 className="text-2xl font-bold glow-text">
-              Sandbox Visualization
-            </h2>
-          </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20">
-              <SandboxVisualizer 
-                session={audioStatus.currentSession}
-                isPlaying={audioStatus.isPlaying}
-                audioConfig={audioConfig}
-              />
-            </div>
-            
-            {/* Export & Share */}
-            {audioStatus.currentSession && (
-              <div>
-                <ExportShare session={audioStatus.currentSession} />
-              </div>
-            )}
-          </div>
-        </div>
       </div>
-    </div>
+    </ChartLayoutWrapper>
   );
 } 

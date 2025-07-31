@@ -14,9 +14,11 @@ interface AudioControlsProps {
   onPlay: () => void;
   onStop: () => void;
   onPause: () => void;
+  onMute?: () => void;
+  isMuted?: boolean;
 }
 
-export default function AudioControls({ audioStatus, onPlay, onStop, onPause }: AudioControlsProps) {
+export default function AudioControls({ audioStatus, onPlay, onStop, onPause, onMute, isMuted = false }: AudioControlsProps) {
   return (
     <div className="bg-white/10 backdrop-blur-md rounded-lg p-4 border border-white/20">
       <h3 className="text-lg font-semibold mb-3 text-center glow-text">
@@ -47,6 +49,16 @@ export default function AudioControls({ audioStatus, onPlay, onStop, onPause }: 
         >
           ⏹️ Stop
         </button>
+        
+        {onMute && (
+          <button
+            onClick={onMute}
+            disabled={audioStatus.isLoading}
+            className="px-4 py-2 bg-gray-600 hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-white font-medium transition-colors"
+          >
+            {isMuted ? '🔇' : '🔊'} Mute
+          </button>
+        )}
       </div>
       
       {audioStatus.isLoading && (

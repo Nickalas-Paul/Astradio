@@ -1,401 +1,459 @@
 import { Request, Response } from 'express';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import { v4 as uuidv4 } from 'uuid';
-import { AuthService, User } from './index';
-import { getDatabase } from '../database';
+import { AuthService, AuthRequest } from './index';
+import { z } from 'zod';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'astroaudio-secret-key-change-in-production';
-const JWT_EXPIRES_IN = '7d';
+// Validation schemas
+const registerSchema = z.object({
+  email: z.string().email('Invalid email format'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+  displayName: z.string().optional()
+});
+
+const loginSchema = z.object({
+  email: z.string().email('Invalid email format'),
+  password: z.string().min(1, 'Password is required')
+});
+
+const googleAuthSchema = z.object({
+  googleId: z.string(),
+  email: z.string().email('Invalid email format'),
+  displayName: z.string(),
+  profileImage: z.string().optional()
+});
+
+const passwordResetRequestSchema = z.object({
+  email: z.string().email('Invalid email format')
+});
+
+const passwordResetSchema = z.object({
+  email: z.string().email('Invalid email format'),
+  resetToken: z.string(),
+  newPassword: z.string().min(8, 'Password must be at least 8 characters')
+});
+
+const changePasswordSchema = z.object({
+  currentPassword: z.string(),
+  newPassword: z.string().min(8, 'Password must be at least 8 characters')
+});
+
+const updateProfileSchema = z.object({
+  display_name: z.string().optional(),
+  default_genre: z.string().optional(),
+  birth_chart: z.string().optional(),
+  profile_image: z.string().optional()
+});
 
 export class AuthController {
   /**
-   * User signup
+   * Register a new user
+   * POST /auth/signup
    */
-  static async signup(req: Request, res: Response) {
+  static async register(req: Request, res: Response): Promise<void> {
     try {
-      const { email, password, name, birthChart } = req.body;
-
-      // Validate required fields
-      if (!email || !password || !name) {
-        return res.status(400).json({
-          success: false,
-          error: 'Email, password, and name are required'
-        });
-      }
-
-      // Validate email format
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email)) {
-        return res.status(400).json({
-          success: false,
-          error: 'Invalid email format'
-        });
-      }
-
-      // Validate password strength
-      if (password.length < 8) {
-        return res.status(400).json({
-          success: false,
-          error: 'Password must be at least 8 characters long'
-        });
-      }
-
-      // Check if user already exists
-      const db = await getDatabase();
-      const existingUser = await db.get('SELECT * FROM users WHERE email = ?', [email]);
-      if (existingUser) {
-        return res.status(409).json({
-          success: false,
-          error: 'User with this email already exists'
-        });
-      }
-
-      // Create user
-      const user = await AuthService.register(email, password, name);
+      const validatedData = registerSchema.parse(req.body);
       
-      // Generate JWT token
-      const token = jwt.sign(
-        { userId: user.id, email: user.email },
-        JWT_SECRET,
-        { expiresIn: JWT_EXPIRES_IN }
+      const user = await AuthService.register(
+        validatedData.email,
+        validatedData.password,
+        validatedData.displayName
       );
 
-      // Save birth chart if provided
-      if (birthChart) {
-        await db.run(
-          'UPDATE users SET birth_chart = ? WHERE id = ?',
-          [JSON.stringify(birthChart), user.id]
-        );
-      }
+      const token = await AuthService.login(validatedData.email, validatedData.password);
 
       res.status(201).json({
         success: true,
         data: {
-          user: {
-            id: user.id,
-            email: user.email,
-            name: user.display_name,
-            subscription_plan: user.subscription_plan,
-            subscription_status: user.subscription_status
-          },
-          token,
-          expires_in: JWT_EXPIRES_IN
-        }
+          user,
+          token: token.token
+        },
+        message: 'User registered successfully'
       });
     } catch (error) {
-      console.error('Signup failed:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Registration failed',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      });
+      if (error instanceof z.ZodError) {
+        res.status(400).json({
+          success: false,
+          error: 'Validation error',
+          details: error.errors
+        });
+      } else if (error instanceof Error) {
+        res.status(400).json({
+          success: false,
+          error: error.message
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          error: 'Internal server error'
+        });
+      }
     }
   }
 
   /**
-   * User login
+   * Login user
+   * POST /auth/login
    */
-  static async login(req: Request, res: Response) {
+  static async login(req: Request, res: Response): Promise<void> {
     try {
-      const { email, password } = req.body;
-
-      // Validate required fields
-      if (!email || !password) {
-        return res.status(400).json({
-          success: false,
-          error: 'Email and password are required'
-        });
-      }
-
-      const result = await AuthService.login(email, password);
+      const validatedData = loginSchema.parse(req.body);
       
+      const result = await AuthService.login(validatedData.email, validatedData.password);
+
       res.json({
         success: true,
-        data: {
-          user: {
-            id: result.user.id,
-            email: result.user.email,
-            name: result.user.display_name,
-            subscription_plan: result.user.subscription_plan,
-            subscription_status: result.user.subscription_status
-          },
-          token: result.token,
-          expires_in: JWT_EXPIRES_IN
-        }
+        data: result,
+        message: 'Login successful'
       });
     } catch (error) {
-      console.error('Login failed:', error);
-      res.status(401).json({
-        success: false,
-        error: 'Invalid credentials'
-      });
+      if (error instanceof z.ZodError) {
+        res.status(400).json({
+          success: false,
+          error: 'Validation error',
+          details: error.errors
+        });
+      } else if (error instanceof Error) {
+        res.status(401).json({
+          success: false,
+          error: error.message
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          error: 'Internal server error'
+        });
+      }
     }
   }
 
   /**
-   * Password reset request
+   * Google OAuth authentication
+   * POST /auth/google
    */
-  static async requestPasswordReset(req: Request, res: Response) {
+  static async googleAuth(req: Request, res: Response): Promise<void> {
     try {
-      const { email } = req.body;
-
-      if (!email) {
-        return res.status(400).json({
-          success: false,
-          error: 'Email is required'
-        });
-      }
-
-      const db = await getDatabase();
-      const user = await db.get('SELECT * FROM users WHERE email = ?', [email]);
+      const validatedData = googleAuthSchema.parse(req.body);
       
-      if (!user) {
-        // Don't reveal if user exists or not
-        return res.json({
-          success: true,
-          message: 'If an account with this email exists, a reset link has been sent'
-        });
-      }
-
-      // Generate reset token
-      const resetToken = uuidv4();
-      const resetExpires = new Date(Date.now() + 3600000); // 1 hour
-
-      await db.run(
-        'UPDATE users SET reset_token = ?, reset_expires = ? WHERE id = ?',
-        [resetToken, resetExpires.toISOString(), user.id]
+      const result = await AuthService.googleAuth(
+        validatedData.googleId,
+        validatedData.email,
+        validatedData.displayName,
+        validatedData.profileImage
       );
-
-      // In production, send email here
-      console.log(`Password reset token for ${email}: ${resetToken}`);
 
       res.json({
         success: true,
-        message: 'If an account with this email exists, a reset link has been sent'
+        data: result,
+        message: 'Google authentication successful'
       });
     } catch (error) {
-      console.error('Password reset request failed:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Failed to process password reset request'
-      });
+      if (error instanceof z.ZodError) {
+        res.status(400).json({
+          success: false,
+          error: 'Validation error',
+          details: error.errors
+        });
+      } else if (error instanceof Error) {
+        res.status(400).json({
+          success: false,
+          error: error.message
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          error: 'Internal server error'
+        });
+      }
     }
   }
 
   /**
-   * Password reset confirmation
+   * Request password reset
+   * POST /auth/forgot-password
    */
-  static async resetPassword(req: Request, res: Response) {
+  static async requestPasswordReset(req: Request, res: Response): Promise<void> {
     try {
-      const { token, newPassword } = req.body;
+      const validatedData = passwordResetRequestSchema.parse(req.body);
+      
+      await AuthService.requestPasswordReset(validatedData.email);
 
-      if (!token || !newPassword) {
-        return res.status(400).json({
+      res.json({
+        success: true,
+        message: 'Password reset email sent (check console for token in development)'
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({
           success: false,
-          error: 'Token and new password are required'
+          error: 'Validation error',
+          details: error.errors
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          error: 'Internal server error'
         });
       }
+    }
+  }
 
-      if (newPassword.length < 8) {
-        return res.status(400).json({
-          success: false,
-          error: 'Password must be at least 8 characters long'
-        });
-      }
-
-      const db = await getDatabase();
-      const user = await db.get(
-        'SELECT * FROM users WHERE reset_token = ? AND reset_expires > ?',
-        [token, new Date().toISOString()]
-      );
-
-      if (!user) {
-        return res.status(400).json({
-          success: false,
-          error: 'Invalid or expired reset token'
-        });
-      }
-
-      // Hash new password
-      const hashedPassword = await bcrypt.hash(newPassword, 12);
-
-      // Update password and clear reset token
-      await db.run(
-        'UPDATE users SET password_hash = ?, reset_token = NULL, reset_expires = NULL WHERE id = ?',
-        [hashedPassword, user.id]
+  /**
+   * Reset password with token
+   * POST /auth/reset-password
+   */
+  static async resetPassword(req: Request, res: Response): Promise<void> {
+    try {
+      const validatedData = passwordResetSchema.parse(req.body);
+      
+      await AuthService.resetPassword(
+        validatedData.email,
+        validatedData.resetToken,
+        validatedData.newPassword
       );
 
       res.json({
         success: true,
-        message: 'Password reset successfully'
+        message: 'Password reset successful'
       });
     } catch (error) {
-      console.error('Password reset failed:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Failed to reset password'
-      });
+      if (error instanceof z.ZodError) {
+        res.status(400).json({
+          success: false,
+          error: 'Validation error',
+          details: error.errors
+        });
+      } else if (error instanceof Error) {
+        res.status(400).json({
+          success: false,
+          error: error.message
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          error: 'Internal server error'
+        });
+      }
     }
   }
 
   /**
    * Get current user profile
+   * GET /auth/profile
    */
-  static async getProfile(req: Request & { user?: User }, res: Response) {
+  static async getProfile(req: AuthRequest, res: Response): Promise<void> {
     try {
       if (!req.user) {
-        return res.status(401).json({
+        res.status(401).json({
           success: false,
           error: 'Authentication required'
         });
-      }
-
-      const db = await getDatabase();
-      const user = await db.get('SELECT * FROM users WHERE id = ?', [req.user.id]);
-
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          error: 'User not found'
-        });
+        return;
       }
 
       res.json({
         success: true,
-        data: {
-          id: user.id,
-          email: user.email,
-          name: user.display_name,
-          birth_chart: user.birth_chart ? JSON.parse(user.birth_chart) : null,
-          subscription_plan: user.subscription_plan,
-          subscription_status: user.subscription_status,
-          subscription_expires_at: user.subscription_expires_at,
-          created_at: user.created_at
-        }
+        data: req.user
       });
     } catch (error) {
-      console.error('Get profile failed:', error);
       res.status(500).json({
         success: false,
-        error: 'Failed to get profile'
+        error: 'Internal server error'
       });
     }
   }
 
   /**
    * Update user profile
+   * PUT /auth/profile
    */
-  static async updateProfile(req: Request & { user?: User }, res: Response) {
+  static async updateProfile(req: AuthRequest, res: Response): Promise<void> {
     try {
       if (!req.user) {
-        return res.status(401).json({
+        res.status(401).json({
           success: false,
           error: 'Authentication required'
         });
+        return;
       }
 
-      const { name, birthChart, defaultGenre } = req.body;
-      const updates: any = {};
-
-      if (name) updates.display_name = name;
-      if (birthChart) updates.birth_chart = JSON.stringify(birthChart);
-      if (defaultGenre) updates.default_genre = defaultGenre;
-
-      if (Object.keys(updates).length === 0) {
-        return res.status(400).json({
-          success: false,
-          error: 'No valid fields to update'
-        });
-      }
-
-      const updatedUser = await AuthService.updateUser(req.user.id, updates);
+      const validatedData = updateProfileSchema.parse(req.body);
+      
+      const updatedUser = await AuthService.updateUser(req.user.id, validatedData);
 
       res.json({
         success: true,
-        data: {
-          id: updatedUser.id,
-          email: updatedUser.email,
-          name: updatedUser.display_name,
-          birth_chart: updatedUser.birth_chart ? JSON.parse(updatedUser.birth_chart) : null,
-          default_genre: updatedUser.default_genre,
-          subscription_plan: updatedUser.subscription_plan,
-          subscription_status: updatedUser.subscription_status
-        }
+        data: updatedUser,
+        message: 'Profile updated successfully'
       });
     } catch (error) {
-      console.error('Update profile failed:', error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({
+          success: false,
+          error: 'Validation error',
+          details: error.errors
+        });
+      } else if (error instanceof Error) {
+        res.status(400).json({
+          success: false,
+          error: error.message
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          error: 'Internal server error'
+        });
+      }
+    }
+  }
+
+  /**
+   * Change password
+   * POST /auth/change-password
+   */
+  static async changePassword(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        res.status(401).json({
+          success: false,
+          error: 'Authentication required'
+        });
+        return;
+      }
+
+      const validatedData = changePasswordSchema.parse(req.body);
+      
+      await AuthService.changePassword(
+        req.user.id,
+        validatedData.currentPassword,
+        validatedData.newPassword
+      );
+
+      res.json({
+        success: true,
+        message: 'Password changed successfully'
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({
+          success: false,
+          error: 'Validation error',
+          details: error.errors
+        });
+      } else if (error instanceof Error) {
+        res.status(400).json({
+          success: false,
+          error: error.message
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          error: 'Internal server error'
+        });
+      }
+    }
+  }
+
+  /**
+   * Verify token validity
+   * GET /auth/verify
+   */
+  static async verifyToken(req: Request, res: Response): Promise<void> {
+    try {
+      const authHeader = req.headers['authorization'];
+      const token = authHeader && authHeader.split(' ')[1];
+
+      if (!token) {
+        res.status(401).json({
+          success: false,
+          error: 'No token provided'
+        });
+        return;
+      }
+
+      const user = await AuthService.verifyToken(token);
+      
+      if (!user) {
+        res.status(401).json({
+          success: false,
+          error: 'Invalid token'
+        });
+        return;
+      }
+
+      res.json({
+        success: true,
+        data: { user }
+      });
+    } catch (error) {
       res.status(500).json({
         success: false,
-        error: 'Failed to update profile'
+        error: 'Internal server error'
       });
     }
   }
 
   /**
-   * Google OAuth callback (simplified for demo)
+   * Logout (client-side token removal)
+   * POST /auth/logout
    */
-  static async googleOAuth(req: Request, res: Response) {
+  static async logout(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const { email, name, googleId } = req.body;
-
-      if (!email || !name || !googleId) {
-        return res.status(400).json({
+      if (!req.user) {
+        res.status(401).json({
           success: false,
-          error: 'Google OAuth data incomplete'
+          error: 'Authentication required'
         });
+        return;
       }
 
-      const db = await getDatabase();
-      let user = await db.get('SELECT * FROM users WHERE email = ?', [email]);
-
-      if (!user) {
-        // Create new user from Google OAuth
-        const userId = uuidv4();
-        user = {
-          id: userId,
-          email,
-          display_name: name,
-          google_id: googleId,
-          default_genre: 'electronic',
-          subscription_plan: 'free',
-          subscription_status: 'active',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        };
-
-        await db.run(
-          'INSERT INTO users (id, email, display_name, google_id, default_genre, subscription_plan, subscription_status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-          [user.id, user.email, user.display_name, user.google_id, user.default_genre, user.subscription_plan, user.subscription_status, user.created_at, user.updated_at]
-        );
-      }
-
-      // Generate JWT token
-      const token = jwt.sign(
-        { userId: user.id, email: user.email },
-        JWT_SECRET,
-        { expiresIn: JWT_EXPIRES_IN }
-      );
+      // In a more sophisticated system, you might blacklist the token
+      // For now, we'll just return success and let the client remove the token
 
       res.json({
         success: true,
-        data: {
-          user: {
-            id: user.id,
-            email: user.email,
-            name: user.display_name,
-            subscription_plan: user.subscription_plan,
-            subscription_status: user.subscription_status
-          },
-          token,
-          expires_in: JWT_EXPIRES_IN
-        }
+        message: 'Logout successful'
       });
     } catch (error) {
-      console.error('Google OAuth failed:', error);
       res.status(500).json({
         success: false,
-        error: 'OAuth authentication failed'
+        error: 'Internal server error'
+      });
+    }
+  }
+
+  /**
+   * Get user by ID (for admin or public profiles)
+   * GET /auth/users/:id
+   */
+  static async getUserById(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      
+      const user = await AuthService.getUserById(id);
+      
+      if (!user) {
+        res.status(404).json({
+          success: false,
+          error: 'User not found'
+        });
+        return;
+      }
+
+      // Return limited user info for public profiles
+      const publicUser = {
+        id: user.id,
+        display_name: user.display_name,
+        profile_image: user.profile_image,
+        created_at: user.created_at
+      };
+
+      res.json({
+        success: true,
+        data: publicUser
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: 'Internal server error'
       });
     }
   }

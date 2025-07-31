@@ -313,10 +313,10 @@ export default function OverlayPage() {
         {/* Generated Text Display */}
         {generatedText && (
           <div className="mb-8">
-            <GeneratedTextDisplay 
-              text={generatedText}
-              className="mb-4"
-            />
+            <div className="mb-4 p-4 glass-morphism rounded-xl border border-emerald-500/20">
+              <h3 className="text-lg font-semibold text-emerald-300 mb-2">Generated Interpretation</h3>
+              <p className="text-gray-300">{generatedText}</p>
+            </div>
           </div>
         )}
 

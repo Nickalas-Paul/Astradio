@@ -31,6 +31,14 @@ export interface SignData {
   degree: number;
 }
 
+export interface AspectData {
+  planet1: string;
+  planet2: string;
+  type: 'conjunction' | 'sextile' | 'square' | 'trine' | 'opposition';
+  angle: number;
+  harmonic: string;
+}
+
 // Birth Data Types
 export interface BirthData {
   date: string;
@@ -54,7 +62,8 @@ export interface AudioConfiguration {
 // Genre System Types
 export type GenreType = 
   | 'ambient' | 'folk' | 'jazz' | 'classical' | 'electronic' 
-  | 'rock' | 'blues' | 'world' | 'techno' | 'chill';
+  | 'rock' | 'blues' | 'world' | 'techno' | 'chill'
+  | 'house' | 'pop' | 'synthwave' | 'world_fusion';
 
 export type MoodType = 
   | 'contemplative' | 'energetic' | 'melancholic' | 'uplifting' 
@@ -140,14 +149,6 @@ export interface MelodicAudioSession extends AudioSession {
   key: string;
   tempo: number;
   timeSignature: string;
-}
-
-export interface AspectData {
-  planet1: string;
-  planet2: string;
-  type: 'conjunction' | 'sextile' | 'square' | 'trine' | 'opposition';
-  angle: number;
-  harmonic: string;
 }
 
 export interface MusicalConfig {

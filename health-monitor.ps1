@@ -84,8 +84,8 @@ function Show-HealthStatus {
     }
 }
 
-# Function to log health data
-function Log-HealthData {
+# Function to write health data to log
+function Write-HealthData {
     param([array]$Services)
     
     $logFile = "health-monitor.log"
@@ -135,7 +135,7 @@ try {
         }
         
         Show-HealthStatus -Services $healthResults
-        Log-HealthData -Services $healthResults
+        Write-HealthData -Services $healthResults
         
         # Check for failed services
         $failedServices = $healthResults | Where-Object { $_.Status -ne "Healthy" }

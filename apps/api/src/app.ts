@@ -254,6 +254,161 @@ app.post('/api/charts/overlay',
   }
 });
 
+// Audio generation endpoints
+app.post('/api/audio/generate', 
+  audioGenerationLimit,
+  validateInput(audioGenerationSchema),
+  async (req, res) => {
+  try {
+    const { chart_data, genre = 'ambient', duration = 60 } = req.body;
+
+    console.log(`🎵 Generating audio for genre: ${genre}`);
+    console.log(`   Chart: ${chart_data.metadata.birth_datetime} (${Object.keys(chart_data.planets).length} planets)`);
+    console.log(`   Duration: ${duration} seconds (${duration / 12} seconds per house)`);
+
+    // Generate actual audio using AudioGenerator with genre
+    const audioGenerator = new AudioGenerator();
+    const composition = audioGenerator.generateChartAudio(chart_data, duration, genre);
+    const audioBuffer = audioGenerator.generateWAVBuffer(composition);
+    
+    console.log(`   Generated ${composition.notes.length} notes`);
+    console.log(`   Audio buffer size: ${audioBuffer.length} bytes`);
+
+    // Set response headers for audio streaming
+    res.setHeader('Content-Type', 'audio/wav');
+    res.setHeader('Content-Length', audioBuffer.length);
+    res.setHeader('Accept-Ranges', 'bytes');
+    
+    // Send audio buffer as ArrayBuffer
+    res.send(Buffer.from(audioBuffer));
+  } catch (error) {
+    console.error('Audio generation failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to generate audio',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+app.post('/api/audio/daily', 
+  audioGenerationLimit,
+  validateInput(audioGenerationSchema),
+  async (req, res) => {
+  try {
+    const { transit_data, genre = 'ambient', duration = 60 } = req.body;
+
+    console.log(`🌅 Generating daily audio for genre: ${genre}`);
+    console.log(`   Transit data: ${transit_data.date}`);
+    console.log(`   Duration: ${duration} seconds`);
+
+    // Generate daily transit audio
+    const audioGenerator = new AudioGenerator();
+    const composition = audioGenerator.generateDailyAudio(transit_data, duration, genre);
+    const audioBuffer = audioGenerator.generateWAVBuffer(composition);
+    
+    console.log(`   Generated ${composition.notes.length} notes`);
+    console.log(`   Audio buffer size: ${audioBuffer.length} bytes`);
+
+    // Set response headers for audio streaming
+    res.setHeader('Content-Type', 'audio/wav');
+    res.setHeader('Content-Length', audioBuffer.length);
+    res.setHeader('Accept-Ranges', 'bytes');
+    
+    // Send audio buffer as ArrayBuffer
+    res.send(Buffer.from(audioBuffer));
+  } catch (error) {
+    console.error('Daily audio generation failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to generate daily audio',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// GET endpoint for daily audio (for landing page)
+app.get('/api/audio/daily', async (req, res) => {
+  try {
+    console.log('🎵 Daily audio endpoint called');
+    
+    const genre = req.query.genre as string || 'ambient';
+    const duration = parseInt(req.query.duration as string) || 60;
+    const date = req.query.date as string || new Date().toISOString().split('T')[0];
+    
+    console.log(`🎵 Generating daily audio: date=${date}, genre=${genre}, duration=${duration}s`);
+    
+    // Fetch real daily chart data
+    console.log('🎵 Fetching daily chart data...');
+    const dailyChart = await astroCore.generateDailyChart(date);
+    console.log('🎵 Daily chart generated:', {
+      date: dailyChart.metadata?.birth_datetime,
+      planets: Object.keys(dailyChart.planets || {}).length,
+      aspects: 0 // AstroChart doesn't have aspects property
+    });
+    
+    // Convert chart data to transit format for audio generation
+    const transitData = {
+      date: date,
+      planets: Object.entries(dailyChart.planets || {}).map(([name, planet]: [string, any]) => ({
+        name: name,
+        longitude: planet.longitude || 0,
+        house: planet.house || 1,
+        sign: planet.sign || 'Aries'
+      }))
+    };
+    
+    console.log(`🎵 Transit data prepared: ${transitData.planets.length} planets`);
+    console.log('🎵 Transit planets:', transitData.planets.map(p => `${p.name} in ${p.sign} (${p.longitude}°)`));
+    
+    // Test AudioGenerator import
+    console.log('🎵 AudioGenerator available:', typeof AudioGenerator);
+    
+    const audioGenerator = new AudioGenerator();
+    console.log('🎵 AudioGenerator instance created');
+    
+    console.log('🎵 Calling generateDailyAudio...');
+    const composition = audioGenerator.generateDailyAudio(transitData, duration, genre);
+    console.log('🎵 Composition generated:', {
+      notes: composition.notes?.length || 0,
+      duration: composition.duration,
+      totalDuration: composition.totalDuration,
+      sampleRate: composition.sampleRate
+    });
+    
+    console.log('🎵 Calling generateWAVBuffer...');
+    const audioBuffer = audioGenerator.generateWAVBuffer(composition);
+    console.log('🎵 WAV buffer generated');
+    
+    console.log(`🎵 Generated composition: ${composition.notes?.length || 0} notes`);
+    console.log(`🎵 Audio buffer size: ${audioBuffer.length} bytes`);
+    
+    if (audioBuffer.length === 0) {
+      throw new Error('Generated audio buffer is empty');
+    }
+    
+    if (audioBuffer.length < 1000) {
+      console.warn('⚠️ Audio buffer seems too small:', audioBuffer.length, 'bytes');
+    }
+    
+    res.setHeader('Content-Type', 'audio/wav');
+    res.setHeader('Content-Length', audioBuffer.length);
+    res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.send(Buffer.from(audioBuffer));
+    
+    console.log(`🎵 Daily audio sent successfully (${audioBuffer.length} bytes)`);
+  } catch (error) {
+    console.error('❌ Daily audio generation error:', error);
+    console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to generate daily audio',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 // Audio endpoints with rate limiting and validation
 app.post('/api/audio/preview', 
   audioGenerationLimit,
@@ -516,34 +671,29 @@ app.post('/api/audio/sandbox',
   validateInput(audioGenerationSchema),
   async (req, res) => {
   try {
-    const { chart_data, configuration, mode = 'sandbox' } = req.body;
+    const { chart_data, aspects = [], configuration = {}, genre = 'ambient', duration = 60 } = req.body;
 
-    console.log(`Starting sandbox audio for mode: ${mode}`);
+    console.log(`Starting sandbox audio for mode: ${genre}`);
     console.log(`   Chart: ${chart_data.metadata.birth_datetime} (${Object.keys(chart_data.planets).length} planets)`);
     if (configuration) {
       console.log(`   Configuration: ${JSON.stringify(configuration)}`);
     }
 
-    // For now, use sequential audio as sandbox mode
-    // In the future, this could use custom configuration
-    const session = await audioEngine.generateSequential(chart_data);
+    // Generate sandbox-specific composition based on user's custom chart and aspects
+    const audioGenerator = new AudioGenerator();
+    const composition = audioGenerator.generateSandboxAudio(chart_data, aspects, configuration, duration, genre);
+    const audioBuffer = audioGenerator.generateWAVBuffer(composition);
     
-    // Override session configuration with sandbox settings
-    if (configuration) {
-      session.configuration = { ...session.configuration, ...configuration };
-    }
+    console.log(`   Generated ${composition.notes.length} notes`);
+    console.log(`   Audio buffer size: ${audioBuffer.length} bytes`);
+
+    // Set response headers for audio streaming
+    res.setHeader('Content-Type', 'audio/wav');
+    res.setHeader('Content-Length', audioBuffer.length);
+    res.setHeader('Accept-Ranges', 'bytes');
     
-    console.log(`   Session created: ${session.id}`);
-    console.log(`   Final configuration: ${JSON.stringify(session.configuration)}`);
-    
-    res.json({
-      success: true,
-      data: {
-        session,
-        message: 'Sandbox audio generation started',
-        mode
-      }
-    });
+    // Send audio buffer as ArrayBuffer
+    res.send(Buffer.from(audioBuffer));
   } catch (error) {
     console.error('Sandbox audio generation failed:', error);
     res.status(500).json({
@@ -999,7 +1149,7 @@ app.get('/api/audio/status', (req, res) => {
 app.post('/api/auth/signup', 
   authLimit,
   validateInput(authSchema),
-  AuthController.signup
+  AuthController.register
 );
 
 app.post('/api/auth/login', 
@@ -1020,7 +1170,7 @@ app.post('/api/auth/password-reset',
 
 app.post('/api/auth/google', 
   authLimit,
-  AuthController.googleOAuth
+  AuthController.googleAuth
 );
 
 app.get('/api/auth/profile', 
@@ -1109,29 +1259,32 @@ app.get('/api/subscriptions/plans',
   SubscriptionController.getPlans
 );
 
-app.get('/api/subscriptions/status', 
-  AuthService.authenticateToken,
-  SubscriptionController.getSubscriptionStatus
-);
+// TODO: Implement getSubscriptionStatus method
+// app.get('/api/subscriptions/status', 
+//   AuthService.authenticateToken,
+//   SubscriptionController.getSubscriptionStatus
+// );
 
 app.post('/api/subscriptions/checkout', 
   AuthService.authenticateToken,
   SubscriptionController.createCheckoutSession
 );
 
-app.post('/api/subscriptions/webhook', 
-  SubscriptionController.handleWebhook
-);
+// TODO: Implement handleWebhook method
+// app.post('/api/subscriptions/webhook', 
+//   SubscriptionController.handleWebhook
+// );
 
 app.post('/api/subscriptions/cancel', 
   AuthService.authenticateToken,
   SubscriptionController.cancelSubscription
 );
 
-app.post('/api/subscriptions/check-limit', 
-  AuthService.authenticateToken,
-  SubscriptionController.checkActionLimit
-);
+// TODO: Implement checkActionLimit method
+// app.post('/api/subscriptions/check-limit', 
+//   AuthService.authenticateToken,
+//   SubscriptionController.checkActionLimit
+// );
 
 // Jam session routes
 app.post('/api/jam/create', 
@@ -1237,6 +1390,50 @@ app.get('/api/jam/:sessionId/status',
     }
   }
 );
+
+// Phase 6.3-6.4: Authentication Routes
+app.post('/auth/signup', authLimit, AuthController.register);
+app.post('/auth/login', authLimit, AuthController.login);
+app.post('/auth/google', authLimit, AuthController.googleAuth);
+app.post('/auth/forgot-password', authLimit, AuthController.requestPasswordReset);
+app.post('/auth/reset-password', authLimit, AuthController.resetPassword);
+app.get('/auth/profile', AuthService.authenticateToken, AuthController.getProfile);
+app.put('/auth/profile', AuthService.authenticateToken, AuthController.updateProfile);
+app.post('/auth/change-password', AuthService.authenticateToken, AuthController.changePassword);
+app.get('/auth/verify', AuthController.verifyToken);
+app.post('/auth/logout', AuthService.authenticateToken, AuthController.logout);
+app.get('/auth/users/:id', AuthController.getUserById);
+
+// Phase 6.3-6.4: Session Management Routes
+app.post('/user/sessions/save', AuthService.authenticateToken, SessionController.saveSession);
+app.get('/user/sessions', AuthService.authenticateToken, SessionController.getUserSessions);
+// TODO: Implement these methods
+// app.post('/user/sessions/share', AuthService.authenticateToken, SessionController.shareSession);
+// app.get('/user/sessions/:id', SessionController.getSharedSession);
+app.delete('/user/sessions/:id', AuthService.authenticateToken, SessionController.deleteSession);
+
+// Phase 6.3-6.4: Social Features Routes
+app.post('/friends/request', AuthService.authenticateToken, FriendController.sendFriendRequest);
+app.post('/friends/accept', AuthService.authenticateToken, FriendController.acceptFriendRequest);
+app.post('/friends/decline', AuthService.authenticateToken, FriendController.declineFriendRequest);
+// TODO: Implement these methods
+// app.get('/friends/list', AuthService.authenticateToken, FriendController.getFriendsList);
+// app.get('/friends/pending', AuthService.authenticateToken, FriendController.getPendingRequests);
+app.delete('/friends/:friendId', AuthService.authenticateToken, FriendController.removeFriend);
+app.get('/friends/search', AuthService.authenticateToken, FriendController.searchUsers);
+
+// Phase 6.3-6.4: Subscription & Monetization Routes
+app.get('/subscriptions/plans', SubscriptionController.getPlans);
+app.get('/subscriptions/current', AuthService.authenticateToken, SubscriptionController.getCurrentSubscription);
+app.post('/subscriptions/checkout', AuthService.authenticateToken, SubscriptionController.createCheckoutSession);
+app.post('/subscriptions/complete-checkout', SubscriptionController.completeCheckout);
+app.post('/subscriptions/cancel', AuthService.authenticateToken, SubscriptionController.cancelSubscription);
+app.post('/subscriptions/downgrade', AuthService.authenticateToken, SubscriptionController.downgradeToFree);
+app.post('/subscriptions/check-access', AuthService.authenticateToken, SubscriptionController.checkFeatureAccess);
+app.get('/subscriptions/usage', AuthService.authenticateToken, SubscriptionController.getUserUsage);
+app.post('/subscriptions/track-usage', AuthService.authenticateToken, SubscriptionController.trackUsage);
+app.get('/subscriptions/analytics', AuthService.authenticateToken, SubscriptionController.getAnalytics);
+app.post('/subscriptions/webhook', SubscriptionController.stripeWebhook);
 
 // Error handling middleware (must be last)
 app.use(errorHandler);

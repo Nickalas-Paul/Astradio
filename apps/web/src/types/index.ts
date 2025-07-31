@@ -31,6 +31,15 @@ export interface SignData {
   degree: number;
 }
 
+// Aspect Types
+export interface AspectData {
+  planet1: string;
+  planet2: string;
+  type: 'conjunction' | 'sextile' | 'square' | 'trine' | 'opposition';
+  angle: number;
+  harmonic: string;
+}
+
 // Birth Data Types
 export interface BirthData {
   date: string;

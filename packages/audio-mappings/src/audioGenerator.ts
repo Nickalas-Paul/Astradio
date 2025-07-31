@@ -1,7 +1,7 @@
 // Audio Generator for Astradio Backend
 // Generates actual audio files or streams for astrological compositions
 
-import { AstroChart } from '@astradio/types';
+import { AstroChart, AspectData } from '@astradio/types';
 
 export interface AudioNote {
   frequency: number;
@@ -14,6 +14,7 @@ export interface AudioNote {
 export interface AudioComposition {
   notes: AudioNote[];
   duration: number;
+  totalDuration: number;
   sampleRate: number;
   format: 'wav' | 'mp3' | 'ogg';
 }
@@ -212,6 +213,475 @@ export class AudioGenerator {
     return {
       notes,
       duration,
+      totalDuration: duration,
+      sampleRate: this.sampleRate,
+      format: 'wav'
+    };
+  }
+
+  // Generate sandbox-specific audio based on custom chart and aspects
+  generateSandboxAudio(
+    chart: AstroChart, 
+    aspects: AspectData[] = [], 
+    configuration: any = {}, 
+    duration: number = 60, 
+    genre: string = 'ambient'
+  ): AudioComposition {
+    const notes: AudioNote[] = [];
+    const secondsPerHouse = duration / 12;
+    
+    // Base planetary mappings with genre-specific instruments
+    const basePlanetaryMappings = {
+      Sun: { baseFrequency: 264, energy: 0.8 },
+      Moon: { baseFrequency: 294, energy: 0.4 },
+      Mercury: { baseFrequency: 392, energy: 0.6 },
+      Venus: { baseFrequency: 349, energy: 0.5 },
+      Mars: { baseFrequency: 330, energy: 0.9 },
+      Jupiter: { baseFrequency: 440, energy: 0.7 },
+      Saturn: { baseFrequency: 220, energy: 0.3 },
+      Uranus: { baseFrequency: 523, energy: 0.6 },
+      Neptune: { baseFrequency: 494, energy: 0.4 },
+      Pluto: { baseFrequency: 147, energy: 0.2 },
+      Chiron: { baseFrequency: 370, energy: 0.5 },
+      Lilith: { baseFrequency: 415, energy: 0.3 },
+      'North Node': { baseFrequency: 466, energy: 0.6 },
+      'South Node': { baseFrequency: 311, energy: 0.4 },
+      Ceres: { baseFrequency: 277, energy: 0.4 },
+      Juno: { baseFrequency: 415, energy: 0.5 },
+      Vesta: { baseFrequency: 349, energy: 0.6 },
+      Pallas: { baseFrequency: 392, energy: 0.5 },
+      Eris: { baseFrequency: 185, energy: 0.3 }
+    };
+
+    // Sort planets by house position
+    const planetEntries = Object.entries(chart.planets);
+    planetEntries.sort((a, b) => a[1].house - b[1].house);
+
+    let currentTime = 0;
+    
+    // Generate notes for each planet
+    planetEntries.forEach(([planetName, planetData]) => {
+      const mapping = basePlanetaryMappings[planetName as keyof typeof basePlanetaryMappings];
+      if (!mapping) return;
+
+      const frequency = this.calculateFrequency(
+        mapping.baseFrequency, 
+        planetData.sign.degree, 
+        planetData.house
+      );
+      
+      const noteDuration = secondsPerHouse * 0.8;
+      const volume = this.calculateVolume(mapping.energy, planetData.house);
+      const instrument = this.getGenreInstrument(planetName, genre);
+
+      notes.push({
+        frequency,
+        duration: noteDuration,
+        volume,
+        instrument,
+        startTime: currentTime
+      });
+
+      currentTime += secondsPerHouse;
+    });
+
+    // Add aspect-based harmonic notes
+    aspects.forEach((aspect, index) => {
+      const aspectNote = this.generateAspectNote(aspect, genre, currentTime + (index * 2));
+      if (aspectNote) {
+        notes.push(aspectNote);
+      }
+    });
+
+    // Apply configuration overrides
+    if (configuration.tempo) {
+      const tempoMultiplier = configuration.tempo / 120; // 120 BPM as baseline
+      notes.forEach(note => {
+        note.duration *= tempoMultiplier;
+      });
+    }
+
+    if (configuration.volume) {
+      notes.forEach(note => {
+        note.volume *= configuration.volume;
+      });
+    }
+
+    return {
+      notes,
+      duration,
+      totalDuration: duration,
+      sampleRate: this.sampleRate,
+      format: 'wav'
+    };
+  }
+
+  // Generate harmonic notes based on aspects
+  private generateAspectNote(aspect: AspectData, genre: string, startTime: number): AudioNote | null {
+    // Enhanced astrological aspect harmonics with proper meanings
+    const aspectAstrologicalHarmonics = {
+      conjunction: { 
+        frequency: 1.0, 
+        energy: 0.8, 
+        meaning: 'Unity & Focus',
+        musicalQuality: 'unison',
+        orb: 8
+      },
+      opposition: { 
+        frequency: 2.0, 
+        energy: 0.9, 
+        meaning: 'Balance & Tension',
+        musicalQuality: 'octave',
+        orb: 8
+      },
+      trine: { 
+        frequency: 1.5, 
+        energy: 0.7, 
+        meaning: 'Harmony & Flow',
+        musicalQuality: 'perfect_fifth',
+        orb: 8
+      },
+      square: { 
+        frequency: 1.33, 
+        energy: 0.6, 
+        meaning: 'Challenge & Growth',
+        musicalQuality: 'perfect_fourth',
+        orb: 8
+      },
+      sextile: { 
+        frequency: 1.17, 
+        energy: 0.5, 
+        meaning: 'Opportunity & Cooperation',
+        musicalQuality: 'major_third',
+        orb: 6
+      }
+    };
+
+    const harmonic = aspectAstrologicalHarmonics[aspect.type];
+    if (!harmonic) {
+      console.warn('⚠️ Unknown aspect type:', aspect.type);
+      return null;
+    }
+
+    // Calculate aspect strength based on angle (using angle as proxy for orb)
+    const angleStrength = Math.max(0, 1 - (Math.abs(aspect.angle - 0) / 10));
+    
+    // Base frequency from the aspect type
+    const baseFreq = 264; // Middle C
+    let frequency = baseFreq * harmonic.frequency;
+    
+    // Adjust frequency based on the planets involved
+    if (aspect.planet1 && aspect.planet2) {
+      const planetFrequencies = {
+        Sun: 264, Moon: 294, Mercury: 392, Venus: 349, Mars: 330,
+        Jupiter: 440, Saturn: 220, Uranus: 523, Neptune: 494, Pluto: 147
+      };
+      
+      const fromFreq = planetFrequencies[aspect.planet1 as keyof typeof planetFrequencies] || baseFreq;
+      const toFreq = planetFrequencies[aspect.planet2 as keyof typeof planetFrequencies] || baseFreq;
+      
+      // Blend the frequencies based on aspect type
+      switch (aspect.type) {
+        case 'conjunction':
+          frequency = (fromFreq + toFreq) / 2; // Average
+          break;
+        case 'opposition':
+          frequency = Math.max(fromFreq, toFreq) * 1.5; // Higher frequency
+          break;
+        case 'trine':
+          frequency = (fromFreq + toFreq) * 0.75; // Harmonious blend
+          break;
+        case 'square':
+          frequency = Math.abs(fromFreq - toFreq) * 1.2; // Tension
+          break;
+        default:
+          frequency = (fromFreq + toFreq) / 2; // Default blend
+      }
+    }
+
+    // Calculate volume based on aspect strength and type
+    let volume = harmonic.energy * angleStrength;
+    
+    // Aspect-specific volume adjustments
+    switch (aspect.type) {
+      case 'conjunction':
+        volume *= 1.2; // Strongest aspect
+        break;
+      case 'opposition':
+        volume *= 1.1; // Very strong
+        break;
+      case 'trine':
+        volume *= 1.0; // Harmonious
+        break;
+      case 'square':
+        volume *= 0.9; // Challenging
+        break;
+      case 'sextile':
+        volume *= 0.8; // Gentle
+        break;
+      default:
+        volume *= 0.7; // Minor aspects
+    }
+
+    // Clamp volume
+    volume = Math.max(0.1, Math.min(1.0, volume));
+
+    // Choose instrument based on aspect type
+    let instrument = 'sine';
+    switch (aspect.type) {
+      case 'conjunction':
+        instrument = 'sine'; // Pure, unified
+        break;
+      case 'opposition':
+        instrument = 'square'; // Contrasting
+        break;
+      case 'trine':
+        instrument = 'triangle'; // Harmonious
+        break;
+      case 'square':
+        instrument = 'sawtooth'; // Tension
+        break;
+      case 'sextile':
+        instrument = 'triangle'; // Gentle
+        break;
+      default:
+        instrument = 'sine';
+    }
+
+    // Apply genre-specific instrument override
+    const genreInstrument = this.getGenreInstrument('Sun', genre);
+    if (genreInstrument !== 'sine') {
+      instrument = genreInstrument;
+    }
+
+    console.log(`🎵 Generated aspect note for ${aspect.planet1}-${aspect.planet2} ${aspect.type}:`, {
+      frequency: Math.round(frequency),
+      volume: volume.toFixed(2),
+      instrument,
+      meaning: harmonic.meaning,
+      angle: aspect.angle,
+      strength: angleStrength.toFixed(2)
+    });
+
+    return {
+      frequency: Math.round(frequency),
+      duration: 3, // 3-second aspect note
+      volume,
+      instrument,
+      startTime
+    };
+  }
+
+  // Generate daily audio based on transit data
+  generateDailyAudio(transitData: any, duration: number = 60, genre: string = 'ambient'): AudioComposition {
+    console.log('🎵 generateDailyAudio called with:', { transitData, duration, genre });
+    
+    const notes: AudioNote[] = [];
+    const secondsPerPlanet = duration / Math.max(transitData.planets.length, 1);
+    
+    // Enhanced astrological planetary mappings with proper energy levels
+    const astrologicalPlanetaryMappings = {
+      Sun: { 
+        baseFrequency: 264, // C4 - Solar energy
+        energy: 0.9, 
+        element: 'fire',
+        qualities: ['leadership', 'vitality', 'creativity']
+      },
+      Moon: { 
+        baseFrequency: 294, // D4 - Lunar intuition
+        energy: 0.7, 
+        element: 'water',
+        qualities: ['emotion', 'intuition', 'nurturing']
+      },
+      Mercury: { 
+        baseFrequency: 392, // G4 - Mercurial communication
+        energy: 0.6, 
+        element: 'air',
+        qualities: ['communication', 'intellect', 'adaptability']
+      },
+      Venus: { 
+        baseFrequency: 349, // F4 - Venusian harmony
+        energy: 0.8, 
+        element: 'earth',
+        qualities: ['beauty', 'harmony', 'relationships']
+      },
+      Mars: { 
+        baseFrequency: 330, // E4 - Martial energy
+        energy: 0.9, 
+        element: 'fire',
+        qualities: ['action', 'passion', 'courage']
+      },
+      Jupiter: { 
+        baseFrequency: 440, // A4 - Jovian expansion
+        energy: 0.8, 
+        element: 'fire',
+        qualities: ['wisdom', 'expansion', 'optimism']
+      },
+      Saturn: { 
+        baseFrequency: 220, // A3 - Saturnine structure
+        energy: 0.5, 
+        element: 'earth',
+        qualities: ['discipline', 'structure', 'limitation']
+      },
+      Uranus: { 
+        baseFrequency: 523, // C5 - Uranian innovation
+        energy: 0.7, 
+        element: 'air',
+        qualities: ['innovation', 'rebellion', 'freedom']
+      },
+      Neptune: { 
+        baseFrequency: 494, // B4 - Neptunian transcendence
+        energy: 0.6, 
+        element: 'water',
+        qualities: ['spirituality', 'illusion', 'compassion']
+      },
+      Pluto: { 
+        baseFrequency: 147, // D3 - Plutonian transformation
+        energy: 0.4, 
+        element: 'water',
+        qualities: ['transformation', 'power', 'regeneration']
+      }
+    };
+
+    // Astrological house meanings and musical characteristics
+    const houseMusicalCharacteristics = {
+      1: { tempo: 1.2, volume: 1.0, harmony: 'major', description: 'Identity & Self' },
+      2: { tempo: 0.8, volume: 0.7, harmony: 'minor', description: 'Values & Resources' },
+      3: { tempo: 1.1, volume: 0.8, harmony: 'major', description: 'Communication & Learning' },
+      4: { tempo: 0.9, volume: 0.9, harmony: 'minor', description: 'Home & Family' },
+      5: { tempo: 1.3, volume: 1.0, harmony: 'major', description: 'Creativity & Romance' },
+      6: { tempo: 0.7, volume: 0.6, harmony: 'minor', description: 'Work & Health' },
+      7: { tempo: 1.0, volume: 0.8, harmony: 'major', description: 'Partnerships & Balance' },
+      8: { tempo: 0.6, volume: 0.5, harmony: 'minor', description: 'Transformation & Shared Resources' },
+      9: { tempo: 1.2, volume: 0.9, harmony: 'major', description: 'Philosophy & Travel' },
+      10: { tempo: 1.1, volume: 1.0, harmony: 'major', description: 'Career & Public Image' },
+      11: { tempo: 1.0, volume: 0.8, harmony: 'major', description: 'Friendships & Groups' },
+      12: { tempo: 0.5, volume: 0.4, harmony: 'minor', description: 'Spirituality & Hidden Things' }
+    };
+
+    // Zodiac sign musical characteristics
+    const zodiacMusicalCharacteristics = {
+      Aries: { frequency: 1.0, rhythm: 'energetic', element: 'fire' },
+      Taurus: { frequency: 0.9, rhythm: 'steady', element: 'earth' },
+      Gemini: { frequency: 1.1, rhythm: 'varied', element: 'air' },
+      Cancer: { frequency: 0.8, rhythm: 'flowing', element: 'water' },
+      Leo: { frequency: 1.2, rhythm: 'bold', element: 'fire' },
+      Virgo: { frequency: 0.7, rhythm: 'precise', element: 'earth' },
+      Libra: { frequency: 1.0, rhythm: 'balanced', element: 'air' },
+      Scorpio: { frequency: 0.6, rhythm: 'intense', element: 'water' },
+      Sagittarius: { frequency: 1.3, rhythm: 'expansive', element: 'fire' },
+      Capricorn: { frequency: 0.8, rhythm: 'structured', element: 'earth' },
+      Aquarius: { frequency: 1.1, rhythm: 'innovative', element: 'air' },
+      Pisces: { frequency: 0.5, rhythm: 'dreamy', element: 'water' }
+    };
+
+    let currentTime = 0;
+    
+    console.log('🎵 Generating notes for planets:', transitData.planets.map((p: any) => p.name));
+    
+    // Generate notes for each planet in transit with astrological rules
+    transitData.planets.forEach((planet: any) => {
+      const mapping = astrologicalPlanetaryMappings[planet.name as keyof typeof astrologicalPlanetaryMappings];
+      if (!mapping) {
+        console.warn('⚠️ No mapping found for planet:', planet.name);
+        return;
+      }
+
+      // Get house characteristics
+      const houseChar = houseMusicalCharacteristics[planet.house as keyof typeof houseMusicalCharacteristics] || 
+                       houseMusicalCharacteristics[1];
+      
+      // Get zodiac sign characteristics
+      const signName = planet.sign?.name || 'Aries';
+      const zodiacChar = zodiacMusicalCharacteristics[signName as keyof typeof zodiacMusicalCharacteristics] || 
+                         zodiacMusicalCharacteristics['Aries'];
+
+      // Calculate frequency with astrological modifications
+      let frequency = mapping.baseFrequency;
+      
+      // Modify by sign degree (0-29 degrees within sign)
+      const signDegree = planet.longitude % 30;
+      frequency *= (1 + (signDegree / 30) * 0.5); // Up to 50% frequency variation
+      
+      // Modify by zodiac sign characteristics
+      frequency *= zodiacChar.frequency;
+      
+      // Modify by house characteristics
+      frequency *= houseChar.tempo;
+
+      // Calculate volume with astrological rules
+      let volume = mapping.energy;
+      
+      // House influence on volume
+      volume *= houseChar.volume;
+      
+      // Element compatibility bonus
+      if (mapping.element === zodiacChar.element) {
+        volume *= 1.2; // 20% boost for element compatibility
+      }
+      
+      // Angular houses (1, 4, 7, 10) are stronger
+      if ([1, 4, 7, 10].includes(planet.house)) {
+        volume *= 1.3; // 30% boost for angular houses
+      }
+      
+      // Succedent houses (2, 5, 8, 11) are moderate
+      if ([2, 5, 8, 11].includes(planet.house)) {
+        volume *= 1.1; // 10% boost for succedent houses
+      }
+      
+      // Cadent houses (3, 6, 9, 12) are weaker
+      if ([3, 6, 9, 12].includes(planet.house)) {
+        volume *= 0.9; // 10% reduction for cadent houses
+      }
+
+      // Clamp volume to reasonable range
+      volume = Math.max(0.1, Math.min(1.0, volume));
+
+      const noteDuration = secondsPerPlanet * 0.8;
+      const instrument = this.getGenreInstrument(planet.name, genre);
+
+      // Add astrological metadata to the note
+      const astrologicalNote = {
+        frequency: Math.round(frequency),
+        duration: noteDuration,
+        volume: volume,
+        instrument: instrument,
+        startTime: currentTime,
+        // Astrological metadata
+        planet: planet.name,
+        sign: signName,
+        house: planet.house,
+        element: mapping.element,
+        qualities: mapping.qualities,
+        houseCharacteristics: houseChar,
+        zodiacCharacteristics: zodiacChar
+      };
+
+      console.log(`🎵 Generated astrological note for ${planet.name}:`, {
+        frequency: Math.round(frequency),
+        duration: noteDuration.toFixed(2),
+        volume: volume.toFixed(2),
+        instrument,
+        startTime: currentTime.toFixed(2),
+        sign: signName,
+        house: planet.house,
+        element: mapping.element,
+        houseDesc: houseChar.description
+      });
+
+      notes.push(astrologicalNote);
+
+      currentTime += secondsPerPlanet;
+    });
+
+    console.log('🎵 Total notes generated:', notes.length);
+    console.log('🎵 Total duration:', duration);
+
+    return {
+      notes,
+      duration,
+      totalDuration: duration,
       sampleRate: this.sampleRate,
       format: 'wav'
     };

@@ -37,6 +37,19 @@ export {
 // Export AudioGenerator
 export { AudioGenerator } from './audioGenerator';
 
+// Export enhanced interpreter
+export { generateEnhancedInterpretation, CELESTIAL_INTERPRETATIONS } from './enhanced-interpreter';
+
+// Export enhanced composition engine
+export { enhancedCompositionEngine, EnhancedCompositionEngine } from './enhanced-composition';
+export type { 
+  HouseComposition, 
+  HouseMelody, 
+  HouseTransition, 
+  CompositionConfig, 
+  EnhancedComposition 
+} from './enhanced-composition';
+
 // Genre System
 export * from './genre-system';
 export * from './genre-narration';
@@ -72,75 +85,162 @@ try {
 
 // Extended planetary mappings with more musical properties
 export const planetaryMappings = {
+  // Traditional Planets
   Sun: { 
     instrument: 'sawtooth', 
     baseFrequency: 264, // C4
     energy: 0.8, 
     color: '#FFD700',
-    element: 'Fire'
+    element: 'Fire',
+    effect: 'lead'
   },
   Moon: { 
     instrument: 'sine', 
     baseFrequency: 294, // D4
     energy: 0.4, 
     color: '#C0C0C0',
-    element: 'Water'
+    element: 'Water',
+    effect: 'ambient'
   },
   Mercury: { 
     instrument: 'square', 
     baseFrequency: 392, // G4
     energy: 0.6, 
     color: '#87CEEB',
-    element: 'Air'
+    element: 'Air',
+    effect: 'melodic'
   },
   Venus: { 
     instrument: 'triangle', 
     baseFrequency: 349, // F4
     energy: 0.5, 
     color: '#FFB6C1',
-    element: 'Earth'
+    element: 'Earth',
+    effect: 'harmonic'
   },
   Mars: { 
     instrument: 'sawtooth', 
-    baseFrequency: 330, // E4
+    baseFrequency: 440, // A4
     energy: 0.9, 
-    color: '#FF4500',
-    element: 'Fire'
+    color: '#FF6B6B',
+    element: 'Fire',
+    effect: 'rhythmic'
   },
   Jupiter: { 
     instrument: 'sine', 
-    baseFrequency: 440, // A4
+    baseFrequency: 196, // G3
     energy: 0.7, 
-    color: '#FFA500',
-    element: 'Fire'
+    color: '#FFD93D',
+    element: 'Air',
+    effect: 'expansive'
   },
   Saturn: { 
     instrument: 'square', 
-    baseFrequency: 220, // A3
+    baseFrequency: 147, // D3
     energy: 0.3, 
-    color: '#808080',
-    element: 'Earth'
+    color: '#A8A8A8',
+    element: 'Earth',
+    effect: 'structured'
   },
+  
+  // Outer Planets
   Uranus: { 
-    instrument: 'triangle', 
+    instrument: 'sawtooth', 
     baseFrequency: 523, // C5
-    energy: 0.6, 
+    energy: 0.8, 
     color: '#00CED1',
-    element: 'Air'
+    element: 'Air',
+    effect: 'glitch'
   },
   Neptune: { 
     instrument: 'sine', 
-    baseFrequency: 494, // B4
-    energy: 0.4, 
+    baseFrequency: 262, // C4
+    energy: 0.2, 
     color: '#4169E1',
-    element: 'Water'
+    element: 'Water',
+    effect: 'reverb'
   },
   Pluto: { 
     instrument: 'sawtooth', 
-    baseFrequency: 147, // D3
-    energy: 0.2, 
-    color: '#800080',
-    element: 'Water'
+    baseFrequency: 73, // D2
+    energy: 0.9, 
+    color: '#8A2BE2',
+    element: 'Water',
+    effect: 'distortion'
+  },
+  
+  // Asteroids and Points
+  Chiron: { 
+    instrument: 'triangle', 
+    baseFrequency: 330, // E4
+    energy: 0.6, 
+    color: '#10B981',
+    element: 'Fire',
+    effect: 'tension'
+  },
+  Lilith: { 
+    instrument: 'sine', 
+    baseFrequency: 277, // C#4
+    energy: 0.4, 
+    color: '#1F2937',
+    element: 'Water',
+    effect: 'minor'
+  },
+  NorthNode: { 
+    instrument: 'sawtooth', 
+    baseFrequency: 415, // G#4
+    energy: 0.7, 
+    color: '#F59E0B',
+    element: 'Air',
+    effect: 'pull'
+  },
+  SouthNode: { 
+    instrument: 'sine', 
+    baseFrequency: 370, // F#4
+    energy: 0.3, 
+    color: '#6B7280',
+    element: 'Earth',
+    effect: 'release'
+  },
+  Ceres: { 
+    instrument: 'triangle', 
+    baseFrequency: 220, // A3
+    energy: 0.5, 
+    color: '#84CC16',
+    element: 'Earth',
+    effect: 'nurturing'
+  },
+  Juno: { 
+    instrument: 'sine', 
+    baseFrequency: 247, // B3
+    energy: 0.6, 
+    color: '#EC4899',
+    element: 'Air',
+    effect: 'partnership'
+  },
+  Vesta: { 
+    instrument: 'square', 
+    baseFrequency: 185, // F#3
+    energy: 0.4, 
+    color: '#F97316',
+    element: 'Fire',
+    effect: 'focused'
+  },
+  Pallas: { 
+    instrument: 'triangle', 
+    baseFrequency: 311, // D#4
+    energy: 0.7, 
+    color: '#8B5CF6',
+    element: 'Air',
+    effect: 'wisdom'
+  },
+  Eris: { 
+    instrument: 'sawtooth', 
+    baseFrequency: 98, // G2
+    energy: 0.8, 
+    color: '#DC2626',
+    element: 'Fire',
+    effect: 'disruption'
   }
 };
 
@@ -157,7 +257,7 @@ export class UniversalAudioEngine {
   private currentSession: AudioSession | null = null;
   private isInitialized = false;
   private scheduledEvents: any[] = [];
-  private currentGenre: GenreType = getRandomGenre();
+  private currentGenre: GenreType = getRandomGenre() as GenreType;
   private currentMood: MoodType | null = null;
 
   async initialize(): Promise<void> {

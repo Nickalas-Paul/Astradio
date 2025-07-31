@@ -215,5 +215,5 @@ Write-Host "2. Or run: .\setup-robust.ps1 -Verbose" -ForegroundColor White
 Write-Host ""
 Write-Host "To start the application:" -ForegroundColor Yellow
 Write-Host "1. .\start-dev.ps1" -ForegroundColor White
-Write-Host "2. Or manually: cd apps\api && npm run dev (Terminal 1)" -ForegroundColor White
-Write-Host "3. And: cd apps\web && npm run dev (Terminal 2)" -ForegroundColor White 
+Write-Host "2. Or manually: cd apps\api; npm run dev (Terminal 1)" -ForegroundColor White
+Write-Host "3. And: cd apps\web; npm run dev (Terminal 2)" -ForegroundColor White 
