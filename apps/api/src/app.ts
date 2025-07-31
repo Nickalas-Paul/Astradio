@@ -62,8 +62,28 @@ console.log('Loaded Client ID:', process.env.ASTRO_CLIENT_ID ? 'Present' : 'Miss
 console.log('Loaded Client Secret:', process.env.ASTRO_CLIENT_SECRET ? 'Present' : 'Missing');
 console.log('Loaded Token URL:', process.env.ASTRO_TOKEN_URL);
 
+// Set default values for required environment variables
+if (!process.env.JWT_SECRET) {
+  process.env.JWT_SECRET = 'astradio-development-jwt-secret';
+  console.log('⚠️  Using default JWT_SECRET for development');
+}
+
+if (!process.env.SESSION_SECRET) {
+  process.env.SESSION_SECRET = 'astradio-development-session-secret';
+  console.log('⚠️  Using default SESSION_SECRET for development');
+}
+
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Ensure database directory exists
+import fs from 'fs';
+import path from 'path';
+
+const dataDir = path.join(process.cwd(), 'data');
+if (!fs.existsSync(dataDir)) {
+  fs.mkdirSync(dataDir, { recursive: true });
+}
 
 // Security middleware (order matters!)
 app.use(enhancedHelmet);
@@ -84,7 +104,32 @@ app.use(logSuspiciousActivity);
 
 // Health check (no rate limiting)
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  try {
+    // Check if database is accessible
+    const dbPath = process.env.DATABASE_URL || './data/astradio.db';
+    const fs = require('fs');
+    const path = require('path');
+    
+    // Ensure data directory exists
+    const dataDir = path.dirname(dbPath);
+    if (!fs.existsSync(dataDir)) {
+      fs.mkdirSync(dataDir, { recursive: true });
+    }
+    
+    res.json({ 
+      status: 'ok', 
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV || 'development',
+      port: process.env.PORT || 3001,
+      database: dbPath
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      status: 'error', 
+      message: 'Health check failed',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
 });
 
 // Daily charts endpoint

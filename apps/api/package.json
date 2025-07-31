@@ -3,6 +3,7 @@
   "main": "dist/app.js",
   "scripts": {
     "build": "tsc",
+    "build:api": "tsc",
     "dev": "nodemon src/app.ts",
     "start": "node dist/app.js"
   },

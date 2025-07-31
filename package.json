@@ -8,10 +8,13 @@
   ],
   "scripts": {
     "build": "turbo run build",
+    "build:api": "npm install && turbo run build:api",
+    "build:all": "npm install && turbo run build",
     "dev": "turbo run dev --parallel",
     "start": "cd apps/api && npm start",
     "start-web": "cd apps/web && npm run dev",
-    "start-api": "cd apps/api && npm run dev"
+    "start-api": "cd apps/api && npm run dev",
+    "postinstall": "turbo run build"
   },
   "devDependencies": {
     "turbo": "^1.10.0",
