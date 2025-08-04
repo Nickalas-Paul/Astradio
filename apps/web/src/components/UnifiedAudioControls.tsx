@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { AstroChart, AudioStatus } from '../types';
+import toneAudioService from '../lib/toneAudioService';
 
 interface UnifiedAudioControlsProps {
   chartData: AstroChart;
@@ -33,7 +34,7 @@ export default function UnifiedAudioControls({
   const [exportSuccess, setExportSuccess] = useState(false);
   const [volume, setVolume] = useState(0.7);
   const [tempo, setTempo] = useState(120);
-  const [showAdvancedControls, setShowAdvancedControls] = useState(false);
+  const [showAdvancedControls, setShowAdvancedControls] = useState(true);
 
   // Real-time audio visualization
   const [audioLevels, setAudioLevels] = useState<number[]>([]);
@@ -49,6 +50,46 @@ export default function UnifiedAudioControls({
       setAudioLevels([]);
     }
   }, [audioStatus?.isPlaying]);
+
+  // Handle play button click - connect to toneAudioService
+  const handlePlay = async () => {
+    if (!chartData) {
+      console.error('No chart data available for playback');
+      return;
+    }
+
+    try {
+      console.log('🎵 Starting audio playback with chart data:', chartData);
+      
+      // Generate note events from chart data
+      const events = toneAudioService.generateNoteEvents(chartData, genre);
+      console.log('🎵 Generated', events.length, 'note events');
+      
+      // Play the events
+      const success = await toneAudioService.playNoteEvents(events);
+      
+      if (success) {
+        console.log('🎵 Audio playback started successfully');
+        onPlay(); // Call the parent's onPlay callback
+      } else {
+        console.error('❌ Failed to start audio playback');
+      }
+    } catch (error) {
+      console.error('❌ Audio playback error:', error);
+    }
+  };
+
+  // Handle stop button click
+  const handleStop = () => {
+    toneAudioService.stop();
+    onStop(); // Call the parent's onStop callback
+  };
+
+  // Handle pause button click
+  const handlePause = () => {
+    toneAudioService.pause();
+    onPause(); // Call the parent's onPause callback
+  };
 
   const handleExport = async () => {
     if (!chartData) return;
@@ -117,6 +158,7 @@ export default function UnifiedAudioControls({
 
   const handleVolumeChange = (newVolume: number) => {
     setVolume(newVolume);
+    toneAudioService.setVolume(newVolume);
     onVolumeChange?.(newVolume);
   };
 
@@ -195,7 +237,7 @@ export default function UnifiedAudioControls({
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          onClick={onPlay}
+          onClick={handlePlay}
           disabled={audioStatus?.isLoading}
           className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-white font-medium transition-colors"
         >
@@ -205,7 +247,7 @@ export default function UnifiedAudioControls({
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          onClick={onPause}
+          onClick={handlePause}
           disabled={audioStatus?.isLoading}
           className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-white font-medium transition-colors"
         >
@@ -215,7 +257,7 @@ export default function UnifiedAudioControls({
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          onClick={onStop}
+          onClick={handleStop}
           disabled={audioStatus?.isLoading}
           className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-white font-medium transition-colors"
         >

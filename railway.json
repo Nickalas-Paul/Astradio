@@ -1,20 +1,14 @@
 {
   "$schema": "https://railway.com/railway.schema.json",
   "build": {
-    "builder": "NIXPACKS",
-    "buildCommand": "npm install && npm run build:api"
+    "builder": "NIXPACKS"
   },
   "deploy": {
     "runtime": "V2",
     "numReplicas": 1,
-    "startCommand": "cd apps/api && npm start",
+    "startCommand": "cd apps/api && npm install && npm run build && npm start",
     "healthcheckPath": "/health",
     "sleepApplication": false,
-    "multiRegionConfig": {
-      "us-east4-eqdc4a": {
-        "numReplicas": 1
-      }
-    },
     "restartPolicyType": "ON_FAILURE",
     "healthcheckTimeout": 100,
     "restartPolicyMaxRetries": 10
@@ -24,7 +18,7 @@
     "PORT": "3001",
     "JWT_SECRET": "astradio-production-jwt-secret-change-in-production",
     "JWT_EXPIRES_IN": "7d",
-    "DATABASE_URL": "/tmp/astradio.db",
+    "DATABASE_URL": "./data/astradio.db",
     "RATE_LIMIT_WINDOW_MS": "900000",
     "RATE_LIMIT_MAX_REQUESTS": "100",
     "ENABLE_HTTPS": "true",
@@ -36,6 +30,9 @@
     "SESSION_SECRET": "astradio-production-session-secret-change-in-production",
     "SESSION_MAX_AGE": "86400000",
     "ENABLE_DEBUG_MODE": "false",
-    "SKIP_EMAIL_VERIFICATION": "true"
+    "SKIP_EMAIL_VERIFICATION": "true",
+    "ASTRO_CLIENT_ID": "your-prokerala-client-id",
+    "ASTRO_CLIENT_SECRET": "your-prokerala-client-secret",
+    "ASTRO_TOKEN_URL": "https://api.prokerala.com/v2/astrology/token"
   }
 } 

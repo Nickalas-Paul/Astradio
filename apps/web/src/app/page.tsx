@@ -8,6 +8,8 @@ import UnifiedAstrologicalWheel from '../components/UnifiedAstrologicalWheel';
 import UnifiedAudioControls from '../components/UnifiedAudioControls';
 import ChartLayoutWrapper from '../components/ChartLayoutWrapper';
 import GenreDropdown from '../components/GenreDropdown';
+import DebugOverlay from '../components/DebugOverlay';
+import toneAudioService from '../lib/toneAudioService';
 
 export default function HomePage() {
   const router = useRouter();
@@ -24,6 +26,20 @@ export default function HomePage() {
   const [audioError, setAudioError] = useState<string | null>(null);
   const [wheelSize, setWheelSize] = useState(400);
   const [dailyChart, setDailyChart] = useState<any>(null);
+  const [audioStatus, setAudioStatus] = useState({
+    isPlaying: false,
+    isLoading: false,
+    currentSession: null as any,
+    error: null as string | null
+  });
+  const [isClient, setIsClient] = useState(false);
+  const [showDebugOverlay, setShowDebugOverlay] = useState(false);
+  const [performanceMetrics, setPerformanceMetrics] = useState({
+    loadTime: 0,
+    audioInitTime: 0,
+    chartRenderTime: 0
+  });
+  const loadStartTime = useRef<number>(0);
 
   // Helper functions for planet data
   const getPlanetSymbol = (name: string) => {
@@ -42,13 +58,10 @@ export default function HomePage() {
     return colors[name] || '#ffffff';
   };
 
-  // Random genres for daily variation
-  const genres = ['ambient', 'techno', 'classical', 'lofi', 'jazz', 'experimental', 'folk', 'electronic', 'rock', 'blues', 'world', 'chill'] as const;
-
+  // Client-side initialization to prevent hydration mismatch
   useEffect(() => {
-    // Set random genre on page load
-    const randomGenre = genres[Math.floor(Math.random() * genres.length)];
-    setSelectedGenre(randomGenre);
+    loadStartTime.current = performance.now();
+    setIsClient(true);
     
     // Calculate wheel size based on screen width
     const calculateWheelSize = () => {
@@ -66,6 +79,15 @@ export default function HomePage() {
     
     // Load today's chart data
     loadDailyChart();
+    
+    // Track performance
+    const loadTime = performance.now() - loadStartTime.current;
+    setPerformanceMetrics(prev => ({ ...prev, loadTime: Math.round(loadTime) }));
+    
+    // Enable debug overlay in development
+    if (process.env.NODE_ENV === 'development') {
+      setShowDebugOverlay(true);
+    }
   }, []);
 
   // House highlighting effect when playing
@@ -82,6 +104,7 @@ export default function HomePage() {
   }, [isPlaying]);
 
   const loadDailyChart = async () => {
+    const chartStartTime = performance.now();
     setIsLoading(true);
     setAudioError(null);
     
@@ -128,6 +151,10 @@ export default function HomePage() {
       setDailyChart(processedChart);
       console.log('🎵 Chart processed with', planetsArray.length, 'planets');
       
+      // Track chart rendering performance
+      const chartRenderTime = performance.now() - chartStartTime;
+      setPerformanceMetrics(prev => ({ ...prev, chartRenderTime: Math.round(chartRenderTime) }));
+      
       // 2. SET UP TRACK INFO FOR TONE.JS
       const genre = selectedGenre || 'ambient';
       const dailyMusic = {
@@ -144,6 +171,10 @@ export default function HomePage() {
       
       setAudioError(null);
       
+      // 4. AUTO-PLAY TODAY'S CHART (optional - can be disabled)
+      // Uncomment the next line to enable auto-play on landing page
+      // await autoPlayDailyChart(processedChart, genre);
+      
     } catch (error) {
       console.error('❌ Daily chart loading failed:', error);
       setAudioError(`Failed to load daily chart: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -152,6 +183,36 @@ export default function HomePage() {
       throw error;
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Auto-play functionality for landing page
+  const autoPlayDailyChart = async (chartData: any, genre: string) => {
+    try {
+      console.log('🎵 Auto-playing today\'s chart...');
+      
+      // Generate note events
+      const events = toneAudioService.generateNoteEvents(chartData, genre);
+      console.log('🎵 Generated', events.length, 'note events for auto-play');
+      
+      // Play the events
+      const success = await toneAudioService.playNoteEvents(events);
+      
+      if (success) {
+        console.log('🎵 Auto-play started successfully');
+        setIsPlaying(true);
+        setAudioStatus({
+          isPlaying: true,
+          isLoading: false,
+          currentSession: { id: Date.now().toString() },
+          error: null
+        });
+      } else {
+        console.log('🎵 Auto-play failed - user can manually start');
+      }
+    } catch (error) {
+      console.error('❌ Auto-play failed:', error);
+      // Don't show error to user for auto-play failures
     }
   };
 
@@ -170,20 +231,78 @@ export default function HomePage() {
     return interpretations[Math.floor(Math.random() * interpretations.length)];
   };
 
-  const handlePlay = () => {
-    setIsPlaying(true);
+  const handlePlay = async () => {
+    if (!dailyChart) return;
+    
+    try {
+      setIsPlaying(true);
+      setAudioError(null);
+      setAudioStatus({
+        isPlaying: false,
+        isLoading: true,
+        currentSession: null,
+        error: null
+      });
+      
+      // Generate and play audio using the tone audio service
+      const events = toneAudioService.generateNoteEvents(dailyChart, selectedGenre || 'ambient');
+      const success = await toneAudioService.playNoteEvents(events);
+      
+      if (success) {
+        setAudioStatus({
+          isPlaying: true,
+          isLoading: false,
+          currentSession: { id: Date.now().toString() },
+          error: null
+        });
+      } else {
+        setAudioError('Failed to start audio playback');
+        setIsPlaying(false);
+        setAudioStatus({
+          isPlaying: false,
+          isLoading: false,
+          currentSession: null,
+          error: 'Failed to start audio playback'
+        });
+      }
+    } catch (error) {
+      console.error('Audio playback failed:', error);
+      setAudioError('Audio playback failed');
+      setIsPlaying(false);
+      setAudioStatus({
+        isPlaying: false,
+        isLoading: false,
+        currentSession: null,
+        error: 'Audio playback failed'
+      });
+    }
   };
 
   const handleStop = () => {
+    toneAudioService.stop();
     setIsPlaying(false);
+    setAudioStatus({
+      isPlaying: false,
+      isLoading: false,
+      currentSession: null,
+      error: null
+    });
   };
 
   const handlePause = () => {
+    toneAudioService.pause();
     setIsPlaying(false);
+    setAudioStatus({
+      isPlaying: false,
+      isLoading: false,
+      currentSession: null,
+      error: null
+    });
   };
 
   const handleVolumeChange = (newVolume: number) => {
     setVolume(newVolume);
+    toneAudioService.setVolume(newVolume);
   };
 
   const formatTime = (seconds: number) => {
@@ -202,11 +321,33 @@ export default function HomePage() {
     loadDailyChart();
   };
 
+  // Don't render until client-side to prevent hydration mismatch
+  if (!isClient) {
+    return (
+      <ChartLayoutWrapper
+        title="ASTRADIO"
+        subtitle="Today's soundtrack:"
+        genre="ambient"
+        showGenre={true}
+      >
+        <Navigation />
+        <div className="container mx-auto px-6 py-12">
+          <div className="flex-1 flex flex-col items-center justify-center text-center px-6 py-12 content-center">
+            <div className="text-center mb-8">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
+              <p className="text-gray-400 font-mystical mt-2">Loading cosmic symphony...</p>
+            </div>
+          </div>
+        </div>
+      </ChartLayoutWrapper>
+    );
+  }
+
   return (
     <ChartLayoutWrapper
       title="ASTRADIO"
       subtitle="Today's soundtrack:"
-                     genre={selectedGenre || 'ambient'}
+      genre={selectedGenre || 'ambient'}
       showGenre={true}
     >
       <Navigation />
@@ -276,6 +417,8 @@ export default function HomePage() {
                 onPlay={handlePlay}
                 onStop={handleStop}
                 onPause={handlePause}
+                onVolumeChange={handleVolumeChange}
+                audioStatus={audioStatus}
                 showExport={true}
               />
             </div>
@@ -301,13 +444,21 @@ export default function HomePage() {
             </div>
           )}
 
-          {/* Main CTA Button */}
-          <button 
-            onClick={handleCTAClick}
-            className="px-8 py-4 btn-cosmic rounded-xl font-semibold text-white transition-all duration-200 transform hover:scale-105 glow font-mystical text-base tracking-wide"
-          >
-            Find out what your birth chart sounds like
-          </button>
+          {/* Main CTA Buttons */}
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+            <button 
+              onClick={handleCTAClick}
+              className="px-8 py-4 btn-cosmic rounded-xl font-semibold text-white transition-all duration-200 transform hover:scale-105 glow font-mystical text-base tracking-wide"
+            >
+              Find out what your birth chart sounds like
+            </button>
+            <button 
+              onClick={() => router.push('/audio-lab')}
+              className="px-8 py-4 bg-purple-600 hover:bg-purple-700 rounded-xl font-semibold text-white transition-all duration-200 transform hover:scale-105 glow font-mystical text-base tracking-wide border border-purple-400/30"
+            >
+              🎛️ Try the Audio Lab
+            </button>
+          </div>
         </div>
 
         {/* Navigation at Bottom */}
@@ -315,6 +466,15 @@ export default function HomePage() {
           <Navigation />
         </div>
       </div>
+      
+      {/* Debug Overlay (Development Only) */}
+      <DebugOverlay
+        chartData={dailyChart}
+        audioStatus={audioStatus}
+        performanceMetrics={performanceMetrics}
+        isVisible={showDebugOverlay}
+        onToggle={() => setShowDebugOverlay(!showDebugOverlay)}
+      />
     </ChartLayoutWrapper>
   );
 } 

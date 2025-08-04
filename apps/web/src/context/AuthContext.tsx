@@ -1,11 +1,13 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 export interface User {
   id: string;
   email: string;
   username: string;
+  display_name?: string;
   avatar?: string;
   birthData?: {
     date: string;
@@ -18,6 +20,11 @@ export interface User {
   isPublic: boolean;
   createdAt: string;
   lastLogin: string;
+  subscription?: {
+    plan: 'free' | 'pro' | 'yearly';
+    status: 'active' | 'cancelled' | 'past_due';
+    currentPeriodEnd?: string;
+  };
 }
 
 export interface SavedTrack {
@@ -30,11 +37,13 @@ export interface SavedTrack {
   createdAt: string;
   isPublic: boolean;
   playCount: number;
+  userId: string;
 }
 
 export interface Friend {
   id: string;
   username: string;
+  display_name?: string;
   avatar?: string;
   isPublic: boolean;
   lastActive: string;
@@ -43,66 +52,116 @@ export interface Friend {
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
+  supabase: SupabaseClient;
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, username: string) => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (updates: Partial<User>) => Promise<void>;
-  saveTrack: (track: Omit<SavedTrack, 'id' | 'createdAt' | 'playCount'>) => Promise<void>;
+  saveTrack: (track: Omit<SavedTrack, 'id' | 'createdAt' | 'playCount' | 'userId'>) => Promise<void>;
   deleteTrack: (trackId: string) => Promise<void>;
-  getSavedTracks: () => SavedTrack[];
+  getSavedTracks: () => Promise<SavedTrack[]>;
   addFriend: (friendId: string) => Promise<void>;
   removeFriend: (friendId: string) => Promise<void>;
-  getFriends: () => Friend[];
+  getFriends: () => Promise<Friend[]>;
   searchUsers: (query: string) => Promise<User[]>;
+  checkSubscription: () => Promise<any>;
+  getUsage: () => Promise<any>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// Initialize Supabase client with fallback for development
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-key';
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Mock data storage (replace with real backend)
-  const [savedTracks, setSavedTracks] = useState<SavedTrack[]>([]);
-  const [friends, setFriends] = useState<Friend[]>([]);
-
   useEffect(() => {
     // Check for existing session
-    const savedUser = localStorage.getItem('astradio-user');
-    const savedTracksData = localStorage.getItem('astradio-tracks');
-    const savedFriendsData = localStorage.getItem('astradio-friends');
+    const checkSession = async () => {
+      try {
+        // Skip Supabase auth in development if not configured
+        if (supabaseUrl === 'https://placeholder.supabase.co') {
+          console.log('Supabase not configured, skipping auth check');
+          setIsLoading(false);
+          return;
+        }
+        
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          await fetchUserProfile(session.user.id);
+        }
+      } catch (error) {
+        console.error('Session check failed:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-    }
-    if (savedTracksData) {
-      setSavedTracks(JSON.parse(savedTracksData));
-    }
-    if (savedFriendsData) {
-      setFriends(JSON.parse(savedFriendsData));
-    }
+    checkSession();
 
-    setIsLoading(false);
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === 'SIGNED_IN' && session?.user) {
+          await fetchUserProfile(session.user.id);
+        } else if (event === 'SIGNED_OUT') {
+          setUser(null);
+        }
+      }
+    );
+
+    return () => subscription.unsubscribe();
   }, []);
+
+  const fetchUserProfile = async (userId: string) => {
+    try {
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) return;
+
+      const response = await fetch(`${API_BASE}/api/auth/profile`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setUser(result.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch user profile:', error);
+    }
+  };
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
-      // Mock login - replace with real auth
-      const mockUser: User = {
-        id: 'user_' + Date.now(),
+      // Skip auth in development if not configured
+      if (supabaseUrl === 'https://placeholder.supabase.co') {
+        console.log('Supabase not configured, skipping login');
+        setIsLoading(false);
+        return;
+      }
+      
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
-        username: email.split('@')[0],
-        theme: 'night',
-        isPublic: false,
-        createdAt: new Date().toISOString(),
-        lastLogin: new Date().toISOString(),
-      };
+        password,
+      });
 
-      setUser(mockUser);
-      localStorage.setItem('astradio-user', JSON.stringify(mockUser));
+      if (error) throw error;
+
+      if (data.user) {
+        await fetchUserProfile(data.user.id);
+      }
     } catch (error) {
-      throw new Error('Login failed');
+      throw new Error(error instanceof Error ? error.message : 'Login failed');
     } finally {
       setIsLoading(false);
     }
@@ -111,117 +170,318 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signup = async (email: string, password: string, username: string) => {
     setIsLoading(true);
     try {
-      // Mock signup - replace with real auth
-      const newUser: User = {
-        id: 'user_' + Date.now(),
+      const { data, error } = await supabase.auth.signUp({
         email,
-        username,
-        theme: 'night',
-        isPublic: false,
-        createdAt: new Date().toISOString(),
-        lastLogin: new Date().toISOString(),
-      };
+        password,
+        options: {
+          data: {
+            username,
+            display_name: username,
+          }
+        }
+      });
 
-      setUser(newUser);
-      localStorage.setItem('astradio-user', JSON.stringify(newUser));
+      if (error) throw error;
+
+      if (data.user) {
+        // Create user profile in our database
+        const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+        const response = await fetch(`${API_BASE}/api/auth/signup`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email,
+            password,
+            displayName: username,
+          }),
+        });
+
+        if (response.ok) {
+          await fetchUserProfile(data.user.id);
+        }
+      }
     } catch (error) {
-      throw new Error('Signup failed');
+      throw new Error(error instanceof Error ? error.message : 'Signup failed');
     } finally {
       setIsLoading(false);
     }
   };
 
   const logout = async () => {
-    setUser(null);
-    localStorage.removeItem('astradio-user');
+    try {
+      await supabase.auth.signOut();
+      setUser(null);
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
   };
 
   const updateProfile = async (updates: Partial<User>) => {
     if (!user) throw new Error('No user logged in');
     
-    const updatedUser = { ...user, ...updates };
-    setUser(updatedUser);
-    localStorage.setItem('astradio-user', JSON.stringify(updatedUser));
+    try {
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) throw new Error('No session');
+
+      const response = await fetch(`${API_BASE}/api/auth/profile`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updates),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setUser(result.data);
+      } else {
+        throw new Error('Failed to update profile');
+      }
+    } catch (error) {
+      throw new Error(error instanceof Error ? error.message : 'Profile update failed');
+    }
   };
 
-  const saveTrack = async (track: Omit<SavedTrack, 'id' | 'createdAt' | 'playCount'>) => {
-    const newTrack: SavedTrack = {
-      ...track,
-      id: 'track_' + Date.now(),
-      createdAt: new Date().toISOString(),
-      playCount: 0,
-    };
+  const saveTrack = async (track: Omit<SavedTrack, 'id' | 'createdAt' | 'playCount' | 'userId'>) => {
+    if (!user) throw new Error('No user logged in');
+    
+    try {
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) throw new Error('No session');
 
-    const updatedTracks = [...savedTracks, newTrack];
-    setSavedTracks(updatedTracks);
-    localStorage.setItem('astradio-tracks', JSON.stringify(updatedTracks));
+      const response = await fetch(`${API_BASE}/api/tracks/save`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(track),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save track');
+      }
+    } catch (error) {
+      throw new Error(error instanceof Error ? error.message : 'Failed to save track');
+    }
   };
 
   const deleteTrack = async (trackId: string) => {
-    const updatedTracks = savedTracks.filter(track => track.id !== trackId);
-    setSavedTracks(updatedTracks);
-    localStorage.setItem('astradio-tracks', JSON.stringify(updatedTracks));
+    if (!user) throw new Error('No user logged in');
+    
+    try {
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) throw new Error('No session');
+
+      const response = await fetch(`${API_BASE}/api/tracks/${trackId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete track');
+      }
+    } catch (error) {
+      throw new Error(error instanceof Error ? error.message : 'Failed to delete track');
+    }
   };
 
-  const getSavedTracks = () => {
-    return savedTracks;
+  const getSavedTracks = async (): Promise<SavedTrack[]> => {
+    if (!user) return [];
+    
+    try {
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) return [];
+
+      const response = await fetch(`${API_BASE}/api/tracks`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        return result.data;
+      }
+      return [];
+    } catch (error) {
+      console.error('Failed to fetch tracks:', error);
+      return [];
+    }
   };
 
   const addFriend = async (friendId: string) => {
-    // Mock friend data - replace with real API
-    const mockFriend: Friend = {
-      id: friendId,
-      username: 'friend_' + friendId.slice(-4),
-      isPublic: true,
-      lastActive: new Date().toISOString(),
-    };
+    if (!user) throw new Error('No user logged in');
+    
+    try {
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) throw new Error('No session');
 
-    const updatedFriends = [...friends, mockFriend];
-    setFriends(updatedFriends);
-    localStorage.setItem('astradio-friends', JSON.stringify(updatedFriends));
+      const response = await fetch(`${API_BASE}/api/friends/add`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ friendId }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to add friend');
+      }
+    } catch (error) {
+      throw new Error(error instanceof Error ? error.message : 'Failed to add friend');
+    }
   };
 
   const removeFriend = async (friendId: string) => {
-    const updatedFriends = friends.filter(friend => friend.id !== friendId);
-    setFriends(updatedFriends);
-    localStorage.setItem('astradio-friends', JSON.stringify(updatedFriends));
+    if (!user) throw new Error('No user logged in');
+    
+    try {
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) throw new Error('No session');
+
+      const response = await fetch(`${API_BASE}/api/friends/remove`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ friendId }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to remove friend');
+      }
+    } catch (error) {
+      throw new Error(error instanceof Error ? error.message : 'Failed to remove friend');
+    }
   };
 
-  const getFriends = () => {
-    return friends;
+  const getFriends = async (): Promise<Friend[]> => {
+    if (!user) return [];
+    
+    try {
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) return [];
+
+      const response = await fetch(`${API_BASE}/api/friends`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        return result.data;
+      }
+      return [];
+    } catch (error) {
+      console.error('Failed to fetch friends:', error);
+      return [];
+    }
   };
 
   const searchUsers = async (query: string): Promise<User[]> => {
-    // Mock search - replace with real API
-    return [
-      {
-        id: 'user_123',
-        email: 'user1@example.com',
-        username: 'cosmic_user',
-        theme: 'night' as const,
-        isPublic: true,
-        createdAt: new Date().toISOString(),
-        lastLogin: new Date().toISOString(),
-      },
-      {
-        id: 'user_456',
-        email: 'user2@example.com',
-        username: 'astro_music',
-        theme: 'day' as const,
-        isPublic: true,
-        createdAt: new Date().toISOString(),
-        lastLogin: new Date().toISOString(),
-      },
-    ].filter(user => 
-      user.username.toLowerCase().includes(query.toLowerCase()) ||
-      user.email.toLowerCase().includes(query.toLowerCase())
-    );
+    try {
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) return [];
+
+      const response = await fetch(`${API_BASE}/api/users/search?q=${encodeURIComponent(query)}`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        return result.data;
+      }
+      return [];
+    } catch (error) {
+      console.error('Failed to search users:', error);
+      return [];
+    }
+  };
+
+  const checkSubscription = async () => {
+    if (!user) return null;
+    
+    try {
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) return null;
+
+      const response = await fetch(`${API_BASE}/api/subscriptions/current`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        return result.data;
+      }
+      return null;
+    } catch (error) {
+      console.error('Failed to check subscription:', error);
+      return null;
+    }
+  };
+
+  const getUsage = async () => {
+    if (!user) return null;
+    
+    try {
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) return null;
+
+      const response = await fetch(`${API_BASE}/api/subscriptions/usage`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        return result.data;
+      }
+      return null;
+    } catch (error) {
+      console.error('Failed to get usage:', error);
+      return null;
+    }
   };
 
   return (
     <AuthContext.Provider value={{
       user,
       isLoading,
+      supabase,
       login,
       signup,
       logout,
@@ -233,6 +493,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       removeFriend,
       getFriends,
       searchUsers,
+      checkSubscription,
+      getUsage,
     }}>
       {children}
     </AuthContext.Provider>

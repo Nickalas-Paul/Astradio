@@ -10,6 +10,7 @@ import { useAuth } from '../context/AuthContext';
 
 const navItems = [
   { href: '/', label: 'Home' },
+  { href: '/audio-lab', label: '🎛️ Audio Lab' },
   { href: '/chart', label: 'Chart' },
   { href: '/overlay', label: 'Overlay' },
   { href: '/sandbox', label: 'Sandbox' },
@@ -20,6 +21,7 @@ const navItems = [
 
 const authenticatedNavItems = [
   { href: '/', label: 'Home' },
+  { href: '/audio-lab', label: '🎛️ Audio Lab' },
   { href: '/chart', label: 'Chart' },
   { href: '/overlay', label: 'Overlay' },
   { href: '/sandbox', label: 'Sandbox' },

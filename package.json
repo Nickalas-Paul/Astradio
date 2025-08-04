@@ -1,26 +1,14 @@
 {
   "name": "astradio",
-  "private": true,
-  "packageManager": "npm@10.9.2",
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
+  "version": "1.0.0",
+  "description": "Astrological Music Generator",
   "scripts": {
-    "build": "turbo run build",
-    "build:api": "npm install && turbo run build:api",
-    "build:all": "npm install && turbo run build",
-    "dev": "turbo run dev --parallel",
+    "dev": "cd apps/api && npm run dev",
     "start": "cd apps/api && npm start",
-    "start-web": "cd apps/web && npm run dev",
-    "start-api": "cd apps/api && npm run dev",
-    "postinstall": "turbo run build"
+    "build": "cd apps/api && npm run build",
+    "test": "echo \"No tests specified\" && exit 0"
   },
   "devDependencies": {
-    "turbo": "^1.10.0",
     "typescript": "^5.0.0"
-  },
-  "dependencies": {
-    "next": "^14.1.4"
   }
 }

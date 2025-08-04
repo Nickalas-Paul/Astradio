@@ -12,7 +12,7 @@ if (-not (Test-Path "node_modules")) {
 
 # Start the development server
 Write-Host "🎯 Starting API server on http://localhost:3001" -ForegroundColor Cyan
-Write-Host "⚠️  Note: Tone.js is browser-only, audio endpoints will show warnings but won't break the server" -ForegroundColor Yellow
+Write-Host "⚠️ Note: Tone.js is browser-only, audio endpoints will show warnings but won't break the server" -ForegroundColor Yellow
 
 try {
     npm run dev

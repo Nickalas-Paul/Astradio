@@ -1,0 +1,51 @@
+services:
+  # Astradio API Service
+  - type: web
+    name: astradio-api
+    env: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    rootDir: apps/api
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: JWT_SECRET
+        value: astradio-production-jwt-secret-change-in-production
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: DATABASE_URL
+        value: ./data/astradio.db
+      - key: RATE_LIMIT_WINDOW_MS
+        value: 900000
+      - key: RATE_LIMIT_MAX_REQUESTS
+        value: 100
+      - key: ENABLE_HTTPS
+        value: true
+      - key: TRUST_PROXY
+        value: true
+      - key: LOG_LEVEL
+        value: info
+      - key: ENABLE_REQUEST_LOGGING
+        value: true
+      - key: MAX_FILE_SIZE
+        value: 10485760
+      - key: ALLOWED_FILE_TYPES
+        value: audio/wav,audio/mp3,audio/ogg
+      - key: SESSION_SECRET
+        value: astradio-production-session-secret-change-in-production
+      - key: SESSION_MAX_AGE
+        value: 86400000
+      - key: ENABLE_DEBUG_MODE
+        value: false
+      - key: SKIP_EMAIL_VERIFICATION
+        value: true
+      - key: ASTRO_CLIENT_ID
+        value: your-prokerala-client-id
+      - key: ASTRO_CLIENT_SECRET
+        value: your-prokerala-client-secret
+      - key: ASTRO_TOKEN_URL
+        value: https://api.prokerala.com/v2/astrology/token 

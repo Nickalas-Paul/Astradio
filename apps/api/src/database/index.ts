@@ -11,12 +11,12 @@ export async function initializeDatabase(): Promise<Database> {
   }
 
   // Ensure database directory exists
-  const dbDir = path.join(__dirname, '..', '..', 'data');
+  const dbDir = path.join(process.cwd(), 'data');
   if (!fs.existsSync(dbDir)) {
     fs.mkdirSync(dbDir, { recursive: true });
   }
 
-  const dbPath = path.join(dbDir, 'astroaudio.db');
+  const dbPath = process.env.DATABASE_URL || path.join(dbDir, 'astroaudio.db');
   
   db = await open({
     filename: dbPath,

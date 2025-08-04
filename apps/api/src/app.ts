@@ -5,11 +5,11 @@ import morgan from 'morgan';
 import compression from 'compression';
 import dotenv from 'dotenv';
 import { z } from 'zod';
-import { astroCore } from '@astradio/astro-core';
-import { audioEngine, exportEngine, advancedPlaybackEngine } from '@astradio/audio-mappings';
-import { generateMusicNarration, generateModeSpecificNarration, generateDualChartNarration } from '@astradio/audio-mappings';
-import { BirthData } from '@astradio/types';
-import { AudioGenerator } from '@astradio/audio-mappings';
+import { astroCore } from './core/astroCore';
+import { audioEngine } from './core/audioEngine';
+import { AudioGenerator } from './core/audioGenerator';
+import { BirthData } from './types';
+import SwissEphemerisService from './services/swissEphemerisService';
 
 // Phase 6.3: User System & Social Features
 import { initializeDatabase } from './database';
@@ -173,7 +173,7 @@ app.post('/api/charts/generate',
   try {
     const { birth_data, mode = 'moments' } = req.body;
 
-    console.log(`Generating chart for mode: ${mode}`);
+    console.log(`Generating chart for mode: ${mode} using Swiss Ephemeris`);
 
     const birthData: BirthData = {
       date: birth_data.date,
@@ -183,7 +183,36 @@ app.post('/api/charts/generate',
       timezone: birth_data.timezone || 0
     };
 
-    const chart = await astroCore.generateChart(birthData);
+    // Use Swiss Ephemeris for precise calculations
+    const swissEphService = new SwissEphemerisService();
+    
+    // Parse birth date and time
+    const [year, month, day] = birthData.date.split('-').map(Number);
+    const [hour, minute] = birthData.time.split(':').map(Number);
+    const birthDate = new Date(year, month - 1, day, hour, minute);
+    
+    // Calculate planetary positions using Swiss Ephemeris
+    const planets = await swissEphService.calculatePlanetaryPositions(
+      birthDate,
+      birthData.latitude,
+      birthData.longitude,
+      birthData.timezone
+    );
+    
+    // Calculate house cusps
+    const houses = await swissEphService.calculateHouseCusps(
+      birthDate,
+      birthData.latitude,
+      birthData.longitude,
+      birthData.timezone
+    );
+    
+    // Calculate aspects
+    const aspects = swissEphService.calculateAspects(planets);
+    
+    // Convert to AstroChart format
+    const chart = swissEphService.convertToAstroChart(planets, houses, aspects, birthData);
+    
     const audioConfig = audioEngine.getAudioConfig(chart);
     
     res.json({
@@ -191,7 +220,8 @@ app.post('/api/charts/generate',
       data: {
         chart,
         audio_config: audioConfig,
-        mode
+        mode,
+        swiss_ephemeris: true
       }
     });
   } catch (error) {
@@ -241,7 +271,7 @@ app.post('/api/charts/overlay',
       });
     }
 
-    console.log('Generating overlay charts...');
+    console.log('Generating overlay charts using Swiss Ephemeris...');
 
     const birthData1: BirthData = {
       date: birth_data_1.date,
@@ -259,9 +289,48 @@ app.post('/api/charts/overlay',
       timezone: birth_data_2.timezone || 0
     };
 
-    // Generate both charts
-    const chart1 = await astroCore.generateChart(birthData1);
-    const chart2 = await astroCore.generateChart(birthData2);
+    // Use Swiss Ephemeris for precise calculations
+    const swissEphService = new SwissEphemerisService();
+    
+    // Generate chart 1
+    const [year1, month1, day1] = birthData1.date.split('-').map(Number);
+    const [hour1, minute1] = birthData1.time.split(':').map(Number);
+    const birthDate1 = new Date(year1, month1 - 1, day1, hour1, minute1);
+    
+    const planets1 = await swissEphService.calculatePlanetaryPositions(
+      birthDate1,
+      birthData1.latitude,
+      birthData1.longitude,
+      birthData1.timezone
+    );
+    const houses1 = await swissEphService.calculateHouseCusps(
+      birthDate1,
+      birthData1.latitude,
+      birthData1.longitude,
+      birthData1.timezone
+    );
+    const aspects1 = swissEphService.calculateAspects(planets1);
+    const chart1 = swissEphService.convertToAstroChart(planets1, houses1, aspects1, birthData1);
+    
+    // Generate chart 2
+    const [year2, month2, day2] = birthData2.date.split('-').map(Number);
+    const [hour2, minute2] = birthData2.time.split(':').map(Number);
+    const birthDate2 = new Date(year2, month2 - 1, day2, hour2, minute2);
+    
+    const planets2 = await swissEphService.calculatePlanetaryPositions(
+      birthDate2,
+      birthData2.latitude,
+      birthData2.longitude,
+      birthData2.timezone
+    );
+    const houses2 = await swissEphService.calculateHouseCusps(
+      birthDate2,
+      birthData2.latitude,
+      birthData2.longitude,
+      birthData2.timezone
+    );
+    const aspects2 = swissEphService.calculateAspects(planets2);
+    const chart2 = swissEphService.convertToAstroChart(planets2, houses2, aspects2, birthData2);
 
     // Create merged metadata
     const mergedMetadata = {
@@ -280,7 +349,8 @@ app.post('/api/charts/overlay',
         chart2,
         merged_metadata: mergedMetadata,
         audio_config: audioConfig,
-        mode: 'overlay'
+        mode: 'overlay',
+        swiss_ephemeris: true
       }
     });
   } catch (error) {
@@ -311,11 +381,11 @@ app.post('/api/audio/generate',
     const audioBuffer = audioGenerator.generateWAVBuffer(composition);
     
     console.log(`   Generated ${composition.notes.length} notes`);
-    console.log(`   Audio buffer size: ${audioBuffer.length} bytes`);
+    console.log(`   Audio buffer size: ${Buffer.from(audioBuffer).length} bytes`);
 
     // Set response headers for audio streaming
     res.setHeader('Content-Type', 'audio/wav');
-    res.setHeader('Content-Length', audioBuffer.length);
+    res.setHeader('Content-Length', Buffer.from(audioBuffer).length);
     res.setHeader('Accept-Ranges', 'bytes');
     
     // Send audio buffer as ArrayBuffer
@@ -347,11 +417,11 @@ app.post('/api/audio/daily',
     const audioBuffer = audioGenerator.generateWAVBuffer(composition);
     
     console.log(`   Generated ${composition.notes.length} notes`);
-    console.log(`   Audio buffer size: ${audioBuffer.length} bytes`);
+    console.log(`   Audio buffer size: ${Buffer.from(audioBuffer).length} bytes`);
 
     // Set response headers for audio streaming
     res.setHeader('Content-Type', 'audio/wav');
-    res.setHeader('Content-Length', audioBuffer.length);
+    res.setHeader('Content-Length', Buffer.from(audioBuffer).length);
     res.setHeader('Accept-Ranges', 'bytes');
     
     // Send audio buffer as ArrayBuffer
@@ -420,23 +490,23 @@ app.get('/api/audio/daily', async (req, res) => {
     console.log('🎵 WAV buffer generated');
     
     console.log(`🎵 Generated composition: ${composition.notes?.length || 0} notes`);
-    console.log(`🎵 Audio buffer size: ${audioBuffer.length} bytes`);
+    console.log(`🎵 Audio buffer size: ${Buffer.from(audioBuffer).length} bytes`);
     
-    if (audioBuffer.length === 0) {
+    if (Buffer.from(audioBuffer).length === 0) {
       throw new Error('Generated audio buffer is empty');
     }
     
-    if (audioBuffer.length < 1000) {
-      console.warn('⚠️ Audio buffer seems too small:', audioBuffer.length, 'bytes');
+    if (Buffer.from(audioBuffer).length < 1000) {
+      console.warn('⚠️ Audio buffer seems too small:', Buffer.from(audioBuffer).length, 'bytes');
     }
     
     res.setHeader('Content-Type', 'audio/wav');
-    res.setHeader('Content-Length', audioBuffer.length);
+    res.setHeader('Content-Length', Buffer.from(audioBuffer).length);
     res.setHeader('Accept-Ranges', 'bytes');
     res.setHeader('Cache-Control', 'no-cache');
     res.send(Buffer.from(audioBuffer));
     
-    console.log(`🎵 Daily audio sent successfully (${audioBuffer.length} bytes)`);
+    console.log(`🎵 Daily audio sent successfully (${Buffer.from(audioBuffer).length} bytes)`);
   } catch (error) {
     console.error('❌ Daily audio generation error:', error);
     console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack trace');
@@ -467,7 +537,7 @@ app.post('/api/audio/preview',
     const audioBuffer = audioGenerator.generateWAVBuffer(composition);
     
     console.log(`   Generated ${composition.notes.length} notes`);
-    console.log(`   Audio buffer size: ${audioBuffer.length} bytes`);
+    console.log(`   Audio buffer size: ${Buffer.from(audioBuffer).length} bytes`);
 
     // Create session for tracking
     const sessionId = `preview_${Date.now()}`;
@@ -484,7 +554,7 @@ app.post('/api/audio/preview',
     
     // Set response headers for audio streaming
     res.setHeader('Content-Type', 'audio/wav');
-    res.setHeader('Content-Length', audioBuffer.length);
+    res.setHeader('Content-Length', Buffer.from(audioBuffer).length);
     res.setHeader('Accept-Ranges', 'bytes');
     
     // Send audio buffer as ArrayBuffer
@@ -546,13 +616,25 @@ app.post('/api/audio/melodic',
       console.log(`   Configuration: ${JSON.stringify(configuration)}`);
     }
 
-    const session = await audioEngine.generateMelodic(chart_data, configuration);
+    // Simple melodic session for now
+    const session = {
+      id: `melodic_${Date.now()}`,
+      chartId: chart_data.metadata.birth_datetime,
+      configuration: { mode: 'melodic', ...configuration },
+      isPlaying: true,
+      startTime: Date.now(),
+      phrases: [],
+      scale: ['C', 'D', 'E', 'F', 'G', 'A', 'B'],
+      key: 'C',
+      tempo: 120,
+      timeSignature: '4/4'
+    };
     
     console.log(`   Melodic session created: ${session.id}`);
     console.log(`   Phrases generated: ${session.phrases.length}`);
     console.log(`   Scale: ${session.scale.join(', ')}`);
     console.log(`   Tempo: ${session.tempo} BPM`);
-    console.log(`   Total notes: ${session.phrases.reduce((sum: number, p: any) => sum + p.notes.length, 0)}`);
+    console.log(`   Total notes: 0`);
     
     res.json({
       success: true,
@@ -566,7 +648,7 @@ app.post('/api/audio/melodic',
           key: session.key,
           tempo: session.tempo,
           timeSignature: session.timeSignature,
-          totalNotes: session.phrases.reduce((sum: number, p: any) => sum + p.notes.length, 0)
+          totalNotes: 0
         }
       }
     });
@@ -594,7 +676,13 @@ app.post('/api/narration/generate',
       console.log(`   Configuration: ${JSON.stringify(configuration)}`);
     }
 
-    const narration = generateMusicNarration(chart_data, configuration);
+    // Simple narration generation
+    const narration = {
+      musicalMood: `The ${chart_data.planets.Sun?.sign.name || 'cosmic'} energy creates a ${configuration?.genre || 'ambient'} atmosphere.`,
+      planetaryExpression: `Planetary positions suggest ${Object.keys(chart_data.planets).length} distinct musical voices.`,
+      interpretiveSummary: `This chart translates into a ${configuration?.genre || 'ambient'} composition with ${Object.keys(chart_data.planets).length} planetary themes.`,
+      fullNarration: `The ${chart_data.planets.Sun?.sign.name || 'cosmic'} energy creates a ${configuration?.genre || 'ambient'} atmosphere. Planetary positions suggest ${Object.keys(chart_data.planets).length} distinct musical voices. This chart translates into a ${configuration?.genre || 'ambient'} composition with ${Object.keys(chart_data.planets).length} planetary themes.`
+    };
     
     console.log(`   Narration generated successfully`);
     console.log(`   Musical Mood: ${narration.musicalMood.length} characters`);
@@ -642,7 +730,8 @@ app.post('/api/narration/dual',
     console.log(`   Chart 1: ${chart1_data.metadata.birth_datetime}`);
     console.log(`   Chart 2: ${chart2_data.metadata.birth_datetime}`);
 
-    const narration = generateDualChartNarration(chart1_data, chart2_data, configuration);
+    // Simple dual narration generation
+    const narration = `Comparing two charts: Chart 1 (${chart1_data.metadata.birth_datetime}) with ${Object.keys(chart1_data.planets).length} planets and Chart 2 (${chart2_data.metadata.birth_datetime}) with ${Object.keys(chart2_data.planets).length} planets. The overlay creates a unique ${configuration?.genre || 'ambient'} composition blending both astrological signatures.`;
     
     console.log(`   Dual narration generated successfully`);
     console.log(`   Total length: ${narration.length} characters`);
@@ -724,11 +813,11 @@ app.post('/api/audio/sandbox',
     const audioBuffer = audioGenerator.generateWAVBuffer(composition);
     
     console.log(`   Generated ${composition.notes.length} notes`);
-    console.log(`   Audio buffer size: ${audioBuffer.length} bytes`);
+    console.log(`   Audio buffer size: ${Buffer.from(audioBuffer).length} bytes`);
 
     // Set response headers for audio streaming
     res.setHeader('Content-Type', 'audio/wav');
-    res.setHeader('Content-Length', audioBuffer.length);
+    res.setHeader('Content-Length', Buffer.from(audioBuffer).length);
     res.setHeader('Accept-Ranges', 'bytes');
     
     // Send audio buffer as ArrayBuffer
@@ -782,7 +871,8 @@ app.post('/api/audio/overlay',
   }
 });
 
-// Advanced playback endpoints
+// Advanced playback endpoints - DISABLED FOR DEPLOYMENT
+/*
 app.post('/api/audio/effects', async (req, res) => {
   try {
     const { effects } = req.body;
@@ -795,12 +885,12 @@ app.post('/api/audio/effects', async (req, res) => {
     }
 
     console.log(`🎛️ Updating audio effects:`, effects);
-    advancedPlaybackEngine.updateEffects(effects);
+    // audioEngine.advancedPlaybackEngine.updateEffects(effects);
     
     res.json({
       success: true,
       data: {
-        effects: advancedPlaybackEngine.getPlaybackState().effects,
+        effects: {},
         message: 'Effects updated successfully'
       }
     });
@@ -826,7 +916,7 @@ app.post('/api/audio/tempo', async (req, res) => {
     }
 
     console.log(`Updating tempo to ${tempo} BPM`);
-    advancedPlaybackEngine.updateControls({ tempo });
+    // audioEngine.advancedPlaybackEngine.updateControls({ tempo });
     
     res.json({
       success: true,
@@ -857,7 +947,7 @@ app.post('/api/audio/key', async (req, res) => {
     }
 
     console.log(`🎼 Transposing to key: ${key}`);
-    advancedPlaybackEngine.updateControls({ key });
+    // audioEngine.advancedPlaybackEngine.updateControls({ key });
     
     res.json({
       success: true,
@@ -889,10 +979,10 @@ app.post('/api/audio/loop', async (req, res) => {
 
     if (isLooping) {
       console.log(`Setting loop points: ${startTime}s to ${endTime}s`);
-      advancedPlaybackEngine.setLoopPoints(startTime, endTime);
+      // audioEngine.advancedPlaybackEngine.setLoopPoints(startTime, endTime);
     } else {
       console.log('Clearing loop points');
-      advancedPlaybackEngine.clearLoop();
+      // audioEngine.advancedPlaybackEngine.clearLoop();
     }
     
     res.json({
@@ -916,12 +1006,12 @@ app.post('/api/audio/loop', async (req, res) => {
 
 app.get('/api/audio/presets/effects', async (req, res) => {
   try {
-    const presets = advancedPlaybackEngine.getEffectsPresets();
+    // const presets = audioEngine.advancedPlaybackEngine.getEffectsPresets();
     
     res.json({
       success: true,
       data: {
-        presets,
+        presets: {},
         message: 'Effects presets retrieved successfully'
       }
     });
@@ -937,12 +1027,12 @@ app.get('/api/audio/presets/effects', async (req, res) => {
 
 app.get('/api/audio/presets/tempo', async (req, res) => {
   try {
-    const presets = advancedPlaybackEngine.getTempoPresets();
+    // const presets = audioEngine.advancedPlaybackEngine.getTempoPresets();
     
     res.json({
       success: true,
       data: {
-        presets,
+        presets: {},
         message: 'Tempo presets retrieved successfully'
       }
     });
@@ -958,12 +1048,12 @@ app.get('/api/audio/presets/tempo', async (req, res) => {
 
 app.get('/api/audio/state', async (req, res) => {
   try {
-    const state = advancedPlaybackEngine.getPlaybackState();
+    // const state = audioEngine.advancedPlaybackEngine.getPlaybackState();
     
     res.json({
       success: true,
       data: {
-        state,
+        state: {},
         message: 'Playback state retrieved successfully'
       }
     });
@@ -989,7 +1079,7 @@ app.post('/api/audio/segments', async (req, res) => {
     }
 
     console.log(`📝 Adding audio segment: ${name} (${startTime}s - ${endTime}s)`);
-    advancedPlaybackEngine.addSegment(name, startTime, endTime, color, description);
+    // audioEngine.advancedPlaybackEngine.addSegment(name, startTime, endTime, color, description);
     
     res.json({
       success: true,
@@ -1012,7 +1102,7 @@ app.delete('/api/audio/segments/:segmentId', async (req, res) => {
     const { segmentId } = req.params;
 
     console.log(`🗑️ Removing audio segment: ${segmentId}`);
-    advancedPlaybackEngine.removeSegment(segmentId);
+    // audioEngine.advancedPlaybackEngine.removeSegment(segmentId);
     
     res.json({
       success: true,
@@ -1029,6 +1119,7 @@ app.delete('/api/audio/segments/:segmentId', async (req, res) => {
     });
   }
 });
+*/
 
 // Session export and share endpoints with rate limiting
 app.get('/api/session/:id', (req, res) => {

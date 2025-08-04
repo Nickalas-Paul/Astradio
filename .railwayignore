@@ -1,0 +1,19 @@
+# Ignore monorepo files that are causing build issues
+turbo.json
+package-lock.json
+package.json
+packages/
+apps/web/
+apps/api/node_modules/
+apps/api/dist/
+node_modules/
+.git/
+.gitignore
+README.md
+*.md
+temp-swisseph/
+public/
+hooks/
+info/
+objects/
+refs/ 

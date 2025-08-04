@@ -20,8 +20,8 @@ export const GENRES = [
 export type GenreId = typeof GENRES[number]['id'];
 
 interface GenreContextType {
-  selectedGenre: GenreId | null;
-  setSelectedGenre: (genre: GenreId | null) => void;
+  selectedGenre: GenreId;
+  setSelectedGenre: (genre: GenreId) => void;
   getRandomGenre: () => GenreId;
   genres: typeof GENRES;
 }
@@ -29,25 +29,27 @@ interface GenreContextType {
 const GenreContext = createContext<GenreContextType | undefined>(undefined);
 
 export function GenreProvider({ children }: { children: React.ReactNode }) {
-  const [selectedGenre, setSelectedGenre] = useState<GenreId | null>(() => {
-    // Try to load from localStorage on mount
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('astradio-selected-genre');
-      return saved as GenreId || null;
-    }
-    return null;
-  });
+  // Use stable default to avoid hydration mismatch
+  const [selectedGenre, setSelectedGenre] = useState<GenreId>('ambient');
+  const [isClient, setIsClient] = useState(false);
 
-  // Save to localStorage whenever selectedGenre changes
+  // Handle client-side initialization after hydration
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      if (selectedGenre) {
-        localStorage.setItem('astradio-selected-genre', selectedGenre);
-      } else {
-        localStorage.removeItem('astradio-selected-genre');
-      }
+    setIsClient(true);
+    
+    // Load from localStorage only after hydration
+    const saved = localStorage.getItem('astradio-selected-genre');
+    if (saved && GENRES.some(g => g.id === saved)) {
+      setSelectedGenre(saved as GenreId);
     }
-  }, [selectedGenre]);
+  }, []);
+
+  // Save to localStorage whenever selectedGenre changes (only on client)
+  useEffect(() => {
+    if (isClient && selectedGenre) {
+      localStorage.setItem('astradio-selected-genre', selectedGenre);
+    }
+  }, [selectedGenre, isClient]);
 
   const getRandomGenre = (): GenreId => {
     const randomIndex = Math.floor(Math.random() * GENRES.length);

@@ -28,6 +28,31 @@ export const GENRE_CONFIGS: Record<Genre, GenreConfig> = {
     keySignatures: ['C', 'G', 'D', 'A', 'F', 'Bb', 'Eb']
   },
 
+  kpop: {
+    name: 'KPOP',
+    instruments: {
+      primary: ['pop_synths', 'percussive_bass', 'melodic_leads', 'layered_vocals'],
+      secondary: ['claps', 'kicks', 'fills', 'arpeggios'],
+      effects: ['chorus', 'reverb', 'delay', 'compression', 'sidechain']
+    },
+    visuals: {
+      palette: ['#FF69B4', '#87CEEB', '#FFD700', '#FF6347', '#9370DB'],
+      textures: ['bright_gradients', 'sparkles', 'neon_effects', 'glitter'],
+      animations: ['bouncy_movements', 'sparkle_effects', 'energetic_transitions'],
+      overlays: ['glitter', 'bubble_effects', 'colorful_patterns', 'neon_glow']
+    },
+    text: {
+      style: 'upbeat',
+      tone: 'energetic',
+      vocabulary: ['catchy', 'memorable', 'uplifting', 'energetic', 'polished'],
+      metaphors: ['hook', 'chorus', 'verse', 'bridge', 'refrain', 'earworm']
+    },
+    textile: 'sequins',
+    tempo: { min: 100, max: 130, default: 115 },
+    scales: ['major', 'minor', 'pentatonic'],
+    keySignatures: ['C', 'G', 'F', 'D', 'A', 'E']
+  },
+
   house: {
     name: 'House',
     instruments: {
@@ -251,6 +276,131 @@ export const GENRE_CONFIGS: Record<Genre, GenreConfig> = {
     tempo: { min: 60, max: 140, default: 100 },
     scales: ['pentatonic', 'dorian', 'mixolydian', 'ethnic_scales'],
     keySignatures: ['D', 'G', 'A', 'E', 'C']
+  },
+
+  lofi: {
+    name: 'Lo-Fi',
+    instruments: {
+      primary: ['vinyl_piano', 'jazz_samples', 'vinyl_crackle', 'soft_drums'],
+      secondary: ['saxophone', 'bass', 'guitar', 'ambient_pads'],
+      effects: ['vinyl_filter', 'reverb', 'delay', 'compression']
+    },
+    visuals: {
+      palette: ['#8B4513', '#CD853F', '#F5DEB3', '#2F4F4F'],
+      textures: ['vinyl_texture', 'warm_lighting', 'nostalgic_filters'],
+      animations: ['gentle_sways', 'smooth_transitions', 'warm_movements'],
+      overlays: ['vinyl_effects', 'nostalgic_frames', 'warm_tones']
+    },
+    text: {
+      style: 'relaxed',
+      tone: 'nostalgic',
+      vocabulary: ['chill', 'relaxed', 'nostalgic', 'warm', 'cozy'],
+      metaphors: ['vinyl', 'cafe', 'rain', 'coffee', 'study']
+    },
+    textile: 'vinyl',
+    tempo: { min: 70, max: 90, default: 80 },
+    scales: ['pentatonic', 'dorian', 'major'],
+    keySignatures: ['C', 'G', 'F', 'D', 'A']
+  },
+
+  orchestral: {
+    name: 'Orchestral',
+    instruments: {
+      primary: ['full_strings', 'brass_section', 'woodwinds', 'timpani'],
+      secondary: ['harp', 'piano', 'percussion', 'choir'],
+      effects: ['hall_reverb', 'spatial_effects', 'orchestral_reverb']
+    },
+    visuals: {
+      palette: ['#D4AF37', '#8B4513', '#F5DEB3', '#2F4F4F'],
+      textures: ['orchestral_hall', 'golden_ratios', 'classical_motifs'],
+      animations: ['elegant_fades', 'smooth_transitions', 'graceful_movements'],
+      overlays: ['orchestral_frames', 'classical_patterns', 'hall_effects']
+    },
+    text: {
+      style: 'epic',
+      tone: 'grand',
+      vocabulary: ['epic', 'grand', 'sophisticated', 'refined', 'majestic'],
+      metaphors: ['symphony', 'orchestra', 'concert', 'hall', 'performance']
+    },
+    textile: 'silk',
+    tempo: { min: 60, max: 160, default: 100 },
+    scales: ['major', 'minor', 'dorian', 'mixolydian'],
+    keySignatures: ['C', 'G', 'D', 'A', 'F', 'Bb', 'Eb']
+  },
+
+  minimal: {
+    name: 'Minimal',
+    instruments: {
+      primary: ['sine_waves', 'minimal_drums', 'sparse_bass', 'textures'],
+      secondary: ['white_noise', 'field_recordings', 'atmospheric_sounds'],
+      effects: ['reverb', 'delay', 'filter_sweeps', 'granular']
+    },
+    visuals: {
+      palette: ['#FFFFFF', '#000000', '#808080', '#C0C0C0'],
+      textures: ['minimal_lines', 'geometric_shapes', 'clean_surfaces'],
+      animations: ['slow_drifts', 'minimal_movements', 'subtle_transitions'],
+      overlays: ['minimal_frames', 'clean_patterns', 'geometric_elements']
+    },
+    text: {
+      style: 'sparse',
+      tone: 'contemplative',
+      vocabulary: ['minimal', 'sparse', 'clean', 'simple', 'pure'],
+      metaphors: ['space', 'silence', 'breath', 'void', 'emptiness']
+    },
+    textile: 'linen',
+    tempo: { min: 40, max: 80, default: 60 },
+    scales: ['pentatonic', 'whole_tone', 'chromatic'],
+    keySignatures: ['C', 'G', 'D', 'A']
+  },
+
+  trap: {
+    name: 'Trap',
+    instruments: {
+      primary: ['808_bass', 'hi_hats', 'snares', 'dark_synths'],
+      secondary: ['claps', 'kicks', 'vocal_samples', 'atmospheric_pads'],
+      effects: ['distortion', 'reverb', 'delay', 'sidechain']
+    },
+    visuals: {
+      palette: ['#000000', '#FF0000', '#00FF00', '#0000FF'],
+      textures: ['dark_urban', 'neon_effects', 'street_art'],
+      animations: ['aggressive_movements', 'strobing_effects', 'urban_transitions'],
+      overlays: ['neon_effects', 'urban_frames', 'street_patterns']
+    },
+    text: {
+      style: 'aggressive',
+      tone: 'urban',
+      vocabulary: ['dark', 'urban', 'aggressive', 'street', 'raw'],
+      metaphors: ['street', 'city', 'night', 'urban', 'concrete']
+    },
+    textile: 'leather',
+    tempo: { min: 130, max: 150, default: 140 },
+    scales: ['minor', 'pentatonic', 'chromatic'],
+    keySignatures: ['Am', 'Em', 'Dm', 'Gm']
+  },
+
+  experimental: {
+    name: 'Experimental',
+    instruments: {
+      primary: ['modular_synths', 'field_recordings', 'found_sounds', 'noise'],
+      secondary: ['granular_synthesis', 'spectral_effects', 'atonal_elements'],
+      effects: ['granular', 'spectral', 'modulation', 'distortion']
+    },
+    visuals: {
+      palette: ['#FF00FF', '#00FFFF', '#FFFF00', '#FF8000'],
+      textures: ['glitch_effects', 'digital_artifacts', 'abstract_patterns'],
+      animations: ['glitch_movements', 'random_transitions', 'abstract_effects'],
+      overlays: ['glitch_frames', 'digital_artifacts', 'abstract_elements']
+    },
+    text: {
+      style: 'avant_garde',
+      tone: 'abstract',
+      vocabulary: ['experimental', 'avant_garde', 'abstract', 'innovative', 'radical'],
+      metaphors: ['glitch', 'noise', 'chaos', 'innovation', 'experiment']
+    },
+    textile: 'digital_fabric',
+    tempo: { min: 30, max: 200, default: 100 },
+    scales: ['chromatic', 'atonal', 'microtonal'],
+    keySignatures: ['C', 'G', 'D', 'A', 'F', 'Bb', 'Eb']
   }
 };
 
@@ -258,7 +408,7 @@ export const GENRE_CONFIGS: Record<Genre, GenreConfig> = {
 
 export const MOOD_TO_GENRE_MAPPINGS: Record<Mood, MoodToGenreMapping> = {
   chill: {
-    genres: ['ambient', 'jazz', 'folk'],
+    genres: ['ambient', 'jazz', 'folk', 'lofi', 'minimal'],
     tempo: { min: 60, max: 100, default: 80 },
     scales: ['pentatonic', 'dorian', 'major'],
     narration: {
@@ -274,7 +424,7 @@ export const MOOD_TO_GENRE_MAPPINGS: Record<Mood, MoodToGenreMapping> = {
   },
 
   intense: {
-    genres: ['techno', 'classical'],
+    genres: ['techno', 'classical', 'trap', 'experimental'],
     tempo: { min: 120, max: 160, default: 140 },
     scales: ['minor', 'chromatic', 'diminished'],
     narration: {
@@ -290,7 +440,7 @@ export const MOOD_TO_GENRE_MAPPINGS: Record<Mood, MoodToGenreMapping> = {
   },
 
   dreamy: {
-    genres: ['ambient', 'synthwave'],
+    genres: ['ambient', 'synthwave', 'minimal'],
     tempo: { min: 70, max: 100, default: 85 },
     scales: ['whole_tone', 'pentatonic', 'major'],
     narration: {
@@ -306,7 +456,7 @@ export const MOOD_TO_GENRE_MAPPINGS: Record<Mood, MoodToGenreMapping> = {
   },
 
   passionate: {
-    genres: ['pop', 'blues', 'jazz'],
+    genres: ['pop', 'blues', 'jazz', 'kpop'],
     tempo: { min: 90, max: 140, default: 120 },
     scales: ['blues', 'minor', 'major'],
     narration: {
@@ -338,7 +488,7 @@ export const MOOD_TO_GENRE_MAPPINGS: Record<Mood, MoodToGenreMapping> = {
   },
 
   uplifting: {
-    genres: ['pop', 'house', 'world_fusion'],
+    genres: ['pop', 'house', 'world_fusion', 'kpop'],
     tempo: { min: 110, max: 140, default: 130 },
     scales: ['major', 'pentatonic', 'mixolydian'],
     narration: {
@@ -354,7 +504,7 @@ export const MOOD_TO_GENRE_MAPPINGS: Record<Mood, MoodToGenreMapping> = {
   },
 
   cosmic: {
-    genres: ['ambient', 'classical', 'jazz'],
+    genres: ['ambient', 'classical', 'jazz', 'orchestral', 'experimental'],
     tempo: { min: 60, max: 100, default: 80 },
     scales: ['whole_tone', 'pentatonic', 'chromatic'],
     narration: {
@@ -454,6 +604,18 @@ export function generateGenreSpecificMelody(genre: Genre, chartData: any): any {
       return generateSynthwaveMelody(chartData, tempo, scales);
     case 'world_fusion':
       return generateWorldFusionMelody(chartData, tempo, scales);
+    case 'kpop':
+      return generateKpopMelody(chartData, tempo, scales);
+    case 'lofi':
+      return generateLofiMelody(chartData, tempo, scales);
+    case 'orchestral':
+      return generateOrchestralMelody(chartData, tempo, scales);
+    case 'minimal':
+      return generateMinimalMelody(chartData, tempo, scales);
+    case 'trap':
+      return generateTrapMelody(chartData, tempo, scales);
+    case 'experimental':
+      return generateExperimentalMelody(chartData, tempo, scales);
     default:
       return generateAmbientMelody(chartData, tempo, scales);
   }
@@ -560,6 +722,66 @@ function generateWorldFusionMelody(chartData: any, tempo: number, scales: string
   };
 }
 
+function generateKpopMelody(chartData: any, tempo: number, scales: string[]): any {
+  return {
+    genre: 'kpop',
+    tempo,
+    scale: scales[0],
+    instruments: ['pop_synths', 'percussive_bass', 'melodic_leads', 'layered_vocals'],
+    notes: generateKpopNotes(chartData, tempo, scales[0])
+  };
+}
+
+function generateLofiMelody(chartData: any, tempo: number, scales: string[]): any {
+  return {
+    genre: 'lofi',
+    tempo,
+    scale: scales[0],
+    instruments: ['vinyl_piano', 'jazz_samples', 'vinyl_crackle', 'soft_drums'],
+    notes: generateLofiNotes(chartData, tempo, scales[0])
+  };
+}
+
+function generateOrchestralMelody(chartData: any, tempo: number, scales: string[]): any {
+  return {
+    genre: 'orchestral',
+    tempo,
+    scale: scales[0],
+    instruments: ['full_strings', 'brass_section', 'woodwinds', 'timpani'],
+    notes: generateOrchestralNotes(chartData, tempo, scales[0])
+  };
+}
+
+function generateMinimalMelody(chartData: any, tempo: number, scales: string[]): any {
+  return {
+    genre: 'minimal',
+    tempo,
+    scale: scales[0],
+    instruments: ['sine_waves', 'minimal_drums', 'sparse_bass', 'textures'],
+    notes: generateMinimalNotes(chartData, tempo, scales[0])
+  };
+}
+
+function generateTrapMelody(chartData: any, tempo: number, scales: string[]): any {
+  return {
+    genre: 'trap',
+    tempo,
+    scale: scales[0],
+    instruments: ['808_bass', 'hi_hats', 'snares', 'dark_synths'],
+    notes: generateTrapNotes(chartData, tempo, scales[0])
+  };
+}
+
+function generateExperimentalMelody(chartData: any, tempo: number, scales: string[]): any {
+  return {
+    genre: 'experimental',
+    tempo,
+    scale: scales[0],
+    instruments: ['modular_synths', 'field_recordings', 'found_sounds', 'noise'],
+    notes: generateExperimentalNotes(chartData, tempo, scales[0])
+  };
+}
+
 // Placeholder note generation functions
 function generateClassicalNotes(chartData: any, tempo: number, scale: string): any[] {
   // Implementation for classical note generation
@@ -608,5 +830,35 @@ function generateSynthwaveNotes(chartData: any, tempo: number, scale: string): a
 
 function generateWorldFusionNotes(chartData: any, tempo: number, scale: string): any[] {
   // Implementation for world fusion note generation
+  return [];
+}
+
+function generateKpopNotes(chartData: any, tempo: number, scale: string): any[] {
+  // Implementation for KPOP note generation with bright major keys and syncopated rhythms
+  return [];
+}
+
+function generateLofiNotes(chartData: any, tempo: number, scale: string): any[] {
+  // Implementation for Lo-Fi note generation with vinyl texture and warm tones
+  return [];
+}
+
+function generateOrchestralNotes(chartData: any, tempo: number, scale: string): any[] {
+  // Implementation for orchestral note generation with full ensemble
+  return [];
+}
+
+function generateMinimalNotes(chartData: any, tempo: number, scale: string): any[] {
+  // Implementation for minimal note generation with sparse textures
+  return [];
+}
+
+function generateTrapNotes(chartData: any, tempo: number, scale: string): any[] {
+  // Implementation for trap note generation with 808 bass and dark synths
+  return [];
+}
+
+function generateExperimentalNotes(chartData: any, tempo: number, scale: string): any[] {
+  // Implementation for experimental note generation with atonal elements
   return [];
 } 

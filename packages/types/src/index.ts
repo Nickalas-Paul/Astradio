@@ -63,7 +63,8 @@ export interface AudioConfiguration {
 export type GenreType = 
   | 'ambient' | 'folk' | 'jazz' | 'classical' | 'electronic' 
   | 'rock' | 'blues' | 'world' | 'techno' | 'chill'
-  | 'house' | 'pop' | 'synthwave' | 'world_fusion';
+  | 'house' | 'pop' | 'synthwave' | 'world_fusion'
+  | 'lofi' | 'orchestral' | 'minimal' | 'trap' | 'kpop' | 'experimental';
 
 export type MoodType = 
   | 'contemplative' | 'energetic' | 'melancholic' | 'uplifting' 
@@ -234,7 +235,13 @@ export type Genre =
   | 'folk'
   | 'ambient'
   | 'synthwave'
-  | 'world_fusion';
+  | 'world_fusion'
+  | 'lofi'
+  | 'orchestral'
+  | 'minimal'
+  | 'trap'
+  | 'kpop'
+  | 'experimental';
 
 export type Mood = 
   | 'chill'

@@ -56,13 +56,23 @@ export * from './genre-narration';
 
 // Node.js compatibility layer for Tone.js
 let Tone: any = null;
+
 try {
-  Tone = require('tone');
+  // Only try to require Tone.js if we're in a browser environment
+  if (typeof window !== 'undefined') {
+    Tone = require('tone');
+  } else {
+    console.warn('Tone.js not available in Node.js environment. Audio features will be simulated.');
+  }
 } catch (error) {
   console.warn('Tone.js not available in Node.js environment. Audio features will be simulated.');
-  // Create a mock Tone object for Node.js
+}
+
+// Create a mock Tone object for Node.js
+if (!Tone) {
   Tone = {
     start: async () => console.log('Mock Tone.js started'),
+    context: { state: 'running' },
     Synth: class MockSynth {
       constructor() {}
       toDestination() { return this; }

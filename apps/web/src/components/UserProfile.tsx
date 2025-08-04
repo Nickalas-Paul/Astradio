@@ -1,328 +1,447 @@
 'use client';
 
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { useAuth, User, SavedTrack } from '../context/AuthContext';
-import { useTheme } from '../context/ThemeContext';
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
+import StripePayment from './StripePayment';
 
 interface UserProfileProps {
-  user: User;
+  onClose?: () => void;
 }
 
-export default function UserProfile({ user }: UserProfileProps) {
-  const [activeTab, setActiveTab] = useState<'profile' | 'library' | 'friends' | 'settings'>('profile');
-  const [isEditing, setIsEditing] = useState(false);
-  const [editForm, setEditForm] = useState({
-    username: user.username,
-    isPublic: user.isPublic,
+export default function UserProfile({ onClose }: UserProfileProps) {
+  const { user, updateProfile, getSavedTracks, getUsage, supabase } = useAuth();
+  const [activeTab, setActiveTab] = useState<'profile' | 'library' | 'subscription' | 'settings'>('profile');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [savedTracks, setSavedTracks] = useState<any[]>([]);
+  const [usage, setUsage] = useState<any>(null);
+  const [profileForm, setProfileForm] = useState({
+    display_name: user?.display_name || '',
+    birthData: user?.birthData || {
+      date: '',
+      time: '',
+      latitude: 0,
+      longitude: 0,
+      timezone: ''
+    },
+    isPublic: user?.isPublic || false,
+    theme: user?.theme || 'night'
   });
-  
-  const { updateProfile, getSavedTracks, getFriends, logout } = useAuth();
-  const { theme, setTheme } = useTheme();
 
-  const savedTracks = getSavedTracks();
-  const friends = getFriends();
+  useEffect(() => {
+    if (user) {
+      setProfileForm({
+        display_name: user.display_name || '',
+        birthData: user.birthData || {
+          date: '',
+          time: '',
+          latitude: 0,
+          longitude: 0,
+          timezone: ''
+        },
+        isPublic: user.isPublic || false,
+        theme: user.theme || 'night'
+      });
+    }
+  }, [user]);
 
-  const handleSaveProfile = async () => {
+  useEffect(() => {
+    if (activeTab === 'library') {
+      loadSavedTracks();
+    } else if (activeTab === 'subscription') {
+      loadUsage();
+    }
+  }, [activeTab]);
+
+  const loadSavedTracks = async () => {
     try {
-      await updateProfile(editForm);
-      setIsEditing(false);
+      const tracks = await getSavedTracks();
+      setSavedTracks(tracks);
     } catch (error) {
-      console.error('Failed to update profile:', error);
+      console.error('Failed to load saved tracks:', error);
     }
   };
 
-  const handleLogout = async () => {
+  const loadUsage = async () => {
     try {
-      await logout();
+      const usageData = await getUsage();
+      setUsage(usageData);
     } catch (error) {
-      console.error('Failed to logout:', error);
+      console.error('Failed to load usage:', error);
     }
   };
 
-  const tabs = [
-    { id: 'profile', label: 'Profile', icon: '👤' },
-    { id: 'library', label: 'Library', icon: '🎼' },
-    { id: 'friends', label: 'Friends', icon: '👥' },
-    { id: 'settings', label: 'Settings', icon: '⚙️' },
-  ];
+  const handleProfileUpdate = async () => {
+    if (!user) return;
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      await updateProfile(profileForm);
+      setError(null);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to update profile');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleExportTrack = async (trackId: string) => {
+    if (!user) return;
+    
+    try {
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) throw new Error('No session');
+
+      const response = await fetch(`${API_BASE}/api/session/export`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          session_id: trackId,
+          format: 'json'
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        // Create download link
+        const link = document.createElement('a');
+        link.href = result.data.download_url;
+        link.download = `astradio-track-${trackId}.json`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } else {
+        throw new Error('Failed to export track');
+      }
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to export track');
+    }
+  };
+
+  const handleDeleteTrack = async (trackId: string) => {
+    if (!confirm('Are you sure you want to delete this track?')) return;
+
+    try {
+      // This would call the deleteTrack function from AuthContext
+      // For now, we'll just remove from local state
+      setSavedTracks(prev => prev.filter(track => track.id !== trackId));
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to delete track');
+    }
+  };
+
+  if (!user) {
+    return (
+      <div className="glass-morphism rounded-2xl p-6 border border-emerald-500/20">
+        <h3 className="text-xl font-semibold mb-4 text-emerald-300">User Profile</h3>
+        <p className="text-gray-300">Please log in to view your profile.</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen pt-24">
-      <div className="container mx-auto px-6 py-8">
-        {/* Header */}
-        <div className="glass-morphism-strong rounded-3xl p-8 border border-emerald-500/20 mb-8">
-          <div className="flex items-center space-x-6">
-            <div className="w-20 h-20 bg-gradient-to-br from-emerald-400 to-violet-500 rounded-full flex items-center justify-center text-2xl font-bold text-white">
-              {user.username.charAt(0).toUpperCase()}
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-emerald-300">User Profile</h2>
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-white transition-colors"
+          >
+            ✕
+          </button>
+        )}
+      </div>
+
+      {/* Tab Navigation */}
+      <div className="flex space-x-1 bg-gray-800 rounded-lg p-1">
+        {[
+          { id: 'profile', label: 'Profile', icon: '👤' },
+          { id: 'library', label: 'Library', icon: '📚' },
+          { id: 'subscription', label: 'Subscription', icon: '💳' },
+          { id: 'settings', label: 'Settings', icon: '⚙️' }
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id as any)}
+            className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${
+              activeTab === tab.id
+                ? 'bg-emerald-600 text-white'
+                : 'text-gray-300 hover:text-white hover:bg-gray-700'
+            }`}
+          >
+            {tab.icon} {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab Content */}
+      <div className="space-y-6">
+        {/* Profile Tab */}
+        {activeTab === 'profile' && (
+          <div className="space-y-6">
+            <div className="glass-morphism rounded-2xl p-6 border border-emerald-500/20">
+              <h3 className="text-xl font-semibold mb-4 text-emerald-300">Profile Information</h3>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Display Name
+                  </label>
+                  <input
+                    type="text"
+                    value={profileForm.display_name}
+                    onChange={(e) => setProfileForm(prev => ({ ...prev, display_name: e.target.value }))}
+                    className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white focus:border-emerald-500 focus:outline-none"
+                    placeholder="Enter your display name"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={user.email}
+                    disabled
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-400 cursor-not-allowed"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Username
+                  </label>
+                  <input
+                    type="text"
+                    value={user.username}
+                    disabled
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-400 cursor-not-allowed"
+                  />
+                </div>
+
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="isPublic"
+                    checked={profileForm.isPublic}
+                    onChange={(e) => setProfileForm(prev => ({ ...prev, isPublic: e.target.checked }))}
+                    className="w-4 h-4 text-emerald-600 bg-gray-800 border-gray-600 rounded focus:ring-emerald-500"
+                  />
+                  <label htmlFor="isPublic" className="ml-2 text-sm text-gray-300">
+                    Make profile public
+                  </label>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Theme
+                  </label>
+                  <select
+                    value={profileForm.theme}
+                    onChange={(e) => setProfileForm(prev => ({ ...prev, theme: e.target.value as 'night' | 'day' }))}
+                    className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white focus:border-emerald-500 focus:outline-none"
+                  >
+                    <option value="night">Night Mode</option>
+                    <option value="day">Day Mode</option>
+                  </select>
+                </div>
+              </div>
+
+              <button
+                onClick={handleProfileUpdate}
+                disabled={isLoading}
+                className="mt-4 px-6 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-white font-semibold transition-colors disabled:opacity-50"
+              >
+                {isLoading ? 'Updating...' : 'Update Profile'}
+              </button>
             </div>
-            <div className="flex-1">
-              <h1 className="text-3xl font-bold text-white font-mystical mb-2">
-                {user.username}
-              </h1>
-              <p className="text-gray-300 font-mystical">
-                Member since {new Date(user.createdAt).toLocaleDateString()}
-              </p>
-              <div className="flex items-center space-x-4 mt-2">
-                <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                  user.isPublic 
-                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' 
-                    : 'bg-gray-500/20 text-gray-300 border border-gray-500/30'
-                }`}>
-                  {user.isPublic ? 'Public Profile' : 'Private Profile'}
-                </span>
-                <span className="text-gray-400 text-sm">
-                  {savedTracks.length} tracks • {friends.length} friends
-                </span>
+
+            {/* Birth Data Section */}
+            <div className="glass-morphism rounded-2xl p-6 border border-emerald-500/20">
+              <h3 className="text-xl font-semibold mb-4 text-emerald-300">Birth Chart Data</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Birth Date
+                  </label>
+                  <input
+                    type="date"
+                    value={profileForm.birthData.date}
+                    onChange={(e) => setProfileForm(prev => ({ 
+                      ...prev, 
+                      birthData: { ...prev.birthData, date: e.target.value }
+                    }))}
+                    className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white focus:border-emerald-500 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Birth Time
+                  </label>
+                  <input
+                    type="time"
+                    value={profileForm.birthData.time}
+                    onChange={(e) => setProfileForm(prev => ({ 
+                      ...prev, 
+                      birthData: { ...prev.birthData, time: e.target.value }
+                    }))}
+                    className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white focus:border-emerald-500 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Latitude
+                  </label>
+                  <input
+                    type="number"
+                    step="0.000001"
+                    value={profileForm.birthData.latitude}
+                    onChange={(e) => setProfileForm(prev => ({ 
+                      ...prev, 
+                      birthData: { ...prev.birthData, latitude: parseFloat(e.target.value) }
+                    }))}
+                    className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white focus:border-emerald-500 focus:outline-none"
+                    placeholder="40.7128"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Longitude
+                  </label>
+                  <input
+                    type="number"
+                    step="0.000001"
+                    value={profileForm.birthData.longitude}
+                    onChange={(e) => setProfileForm(prev => ({ 
+                      ...prev, 
+                      birthData: { ...prev.birthData, longitude: parseFloat(e.target.value) }
+                    }))}
+                    className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white focus:border-emerald-500 focus:outline-none"
+                    placeholder="-74.0060"
+                  />
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
-        {/* Tabs */}
-        <div className="flex space-x-1 mb-8">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`flex-1 py-3 px-4 rounded-xl font-mystical transition-all duration-200 ${
-                activeTab === tab.id
-                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                  : 'text-gray-300 hover:text-emerald-300 hover:bg-emerald-500/10'
-              }`}
-            >
-              <span className="mr-2">{tab.icon}</span>
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Tab Content */}
-        <div className="glass-morphism-strong rounded-3xl p-8 border border-emerald-500/20">
-          {activeTab === 'profile' && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="space-y-6"
-            >
-              <h2 className="section-header text-2xl mb-6">Profile Information</h2>
-              
-              {isEditing ? (
-                <div className="space-y-4">
-                  <div>
-                    <label className="form-label">Username</label>
-                    <input
-                      type="text"
-                      value={editForm.username}
-                      onChange={(e) => setEditForm({ ...editForm, username: e.target.value })}
-                      className="form-input w-full"
-                    />
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <input
-                      type="checkbox"
-                      id="isPublic"
-                      checked={editForm.isPublic}
-                      onChange={(e) => setEditForm({ ...editForm, isPublic: e.target.checked })}
-                      className="rounded border-gray-600"
-                    />
-                    <label htmlFor="isPublic" className="form-label">Make profile public</label>
-                  </div>
-                  <div className="flex space-x-3">
-                    <button
-                      onClick={handleSaveProfile}
-                      className="btn-cosmic px-6 py-2 rounded-xl font-mystical"
-                    >
-                      Save Changes
-                    </button>
-                    <button
-                      onClick={() => setIsEditing(false)}
-                      className="px-6 py-2 bg-gray-600/20 border border-gray-600/30 rounded-xl text-gray-300 hover:bg-gray-600/30 font-mystical"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div>
-                    <label className="form-label">Email</label>
-                    <p className="text-gray-300 font-mystical">{user.email}</p>
-                  </div>
-                  <div>
-                    <label className="form-label">Username</label>
-                    <p className="text-gray-300 font-mystical">{user.username}</p>
-                  </div>
-                  <div>
-                    <label className="form-label">Profile Visibility</label>
-                    <p className="text-gray-300 font-mystical">
-                      {user.isPublic ? 'Public - Others can see your profile' : 'Private - Only you can see your profile'}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setIsEditing(true)}
-                    className="btn-cosmic px-6 py-2 rounded-xl font-mystical"
-                  >
-                    Edit Profile
-                  </button>
-                </div>
-              )}
-            </motion.div>
-          )}
-
-          {activeTab === 'library' && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="space-y-6"
-            >
-              <h2 className="section-header text-2xl mb-6">Your Library</h2>
+        {/* Library Tab */}
+        {activeTab === 'library' && (
+          <div className="space-y-6">
+            <div className="glass-morphism rounded-2xl p-6 border border-emerald-500/20">
+              <h3 className="text-xl font-semibold mb-4 text-emerald-300">Your Library</h3>
               
               {savedTracks.length === 0 ? (
-                <div className="text-center py-12">
-                  <div className="text-4xl mb-4">🎼</div>
-                  <h3 className="text-xl font-semibold mb-2 font-mystical">No tracks yet</h3>
-                  <p className="text-gray-300 font-mystical">
-                    Start creating music to build your cosmic library
-                  </p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {savedTracks.map((track) => (
-                    <div key={track.id} className="glass-morphism rounded-xl p-6 border border-emerald-500/20">
-                      <div className="flex items-center justify-between mb-4">
-                        <h3 className="font-semibold text-white font-mystical">{track.title}</h3>
-                        <span className="text-xs text-gray-400 capitalize">{track.genre}</span>
-                      </div>
-                      <p className="text-sm text-gray-300 mb-4 font-mystical">
-                        {track.interpretation.substring(0, 100)}...
-                      </p>
-                      <div className="flex items-center justify-between text-xs text-gray-400">
-                        <span className="capitalize">{track.chartType}</span>
-                        <span>{new Date(track.createdAt).toLocaleDateString()}</span>
-                      </div>
-                      <div className="flex space-x-2 mt-4">
-                        <button className="flex-1 py-2 bg-emerald-500/20 border border-emerald-500/30 rounded-lg text-emerald-300 hover:bg-emerald-500/30 transition-colors text-sm font-mystical">
-                          Play
-                        </button>
-                        <button className="flex-1 py-2 bg-violet-500/20 border border-violet-500/30 rounded-lg text-violet-300 hover:bg-violet-500/30 transition-colors text-sm font-mystical">
-                          Share
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </motion.div>
-          )}
-
-          {activeTab === 'friends' && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="space-y-6"
-            >
-              <h2 className="section-header text-2xl mb-6">Friends</h2>
-              
-              {friends.length === 0 ? (
-                <div className="text-center py-12">
-                  <div className="text-4xl mb-4">👥</div>
-                  <h3 className="text-xl font-semibold mb-2 font-mystical">No friends yet</h3>
-                  <p className="text-gray-300 font-mystical">
-                    Connect with other cosmic music creators
-                  </p>
-                </div>
+                <p className="text-gray-300">No saved tracks yet. Create some music to see them here!</p>
               ) : (
                 <div className="space-y-4">
-                  {friends.map((friend) => (
-                    <div key={friend.id} className="flex items-center justify-between p-4 glass-morphism rounded-xl border border-emerald-500/20">
-                      <div className="flex items-center space-x-4">
-                        <div className="w-12 h-12 bg-gradient-to-br from-emerald-400 to-violet-500 rounded-full flex items-center justify-center text-white font-bold">
-                          {friend.username.charAt(0).toUpperCase()}
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-white font-mystical">{friend.username}</h3>
-                          <p className="text-sm text-gray-400 font-mystical">
-                            Last active {new Date(friend.lastActive).toLocaleDateString()}
-                          </p>
-                        </div>
+                  {savedTracks.map((track) => (
+                    <div key={track.id} className="flex items-center justify-between p-4 bg-gray-800 rounded-lg">
+                      <div className="flex-1">
+                        <h4 className="text-white font-semibold">{track.title}</h4>
+                        <p className="text-gray-400 text-sm">
+                          {track.chartType} • {track.genre} • {new Date(track.createdAt).toLocaleDateString()}
+                        </p>
+                        <p className="text-gray-500 text-sm">
+                          Plays: {track.playCount} • {track.isPublic ? 'Public' : 'Private'}
+                        </p>
                       </div>
+                      
                       <div className="flex space-x-2">
-                        <button className="px-4 py-2 bg-emerald-500/20 border border-emerald-500/30 rounded-lg text-emerald-300 hover:bg-emerald-500/30 transition-colors text-sm font-mystical">
-                          Compare Charts
+                        <button
+                          onClick={() => handleExportTrack(track.id)}
+                          className="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-white text-sm transition-colors"
+                        >
+                          Export
                         </button>
-                        <button className="px-4 py-2 bg-red-500/20 border border-red-500/30 rounded-lg text-red-300 hover:bg-red-500/30 transition-colors text-sm font-mystical">
-                          Remove
+                        <button
+                          onClick={() => handleDeleteTrack(track.id)}
+                          className="px-3 py-1 bg-red-600 hover:bg-red-700 rounded text-white text-sm transition-colors"
+                        >
+                          Delete
                         </button>
                       </div>
                     </div>
                   ))}
                 </div>
               )}
-            </motion.div>
-          )}
+            </div>
+          </div>
+        )}
 
-          {activeTab === 'settings' && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="space-y-6"
-            >
-              <h2 className="section-header text-2xl mb-6">Settings</h2>
+        {/* Subscription Tab */}
+        {activeTab === 'subscription' && (
+          <StripePayment onSuccess={() => setActiveTab('profile')} />
+        )}
+
+        {/* Settings Tab */}
+        {activeTab === 'settings' && (
+          <div className="space-y-6">
+            <div className="glass-morphism rounded-2xl p-6 border border-emerald-500/20">
+              <h3 className="text-xl font-semibold mb-4 text-emerald-300">Account Settings</h3>
               
-              <div className="space-y-6">
+              <div className="space-y-4">
                 <div>
-                  <h3 className="text-lg font-semibold mb-4 font-mystical">Appearance</h3>
-                  <div className="flex items-center justify-between p-4 glass-morphism rounded-xl border border-emerald-500/20">
-                    <div>
-                      <p className="font-medium text-white font-mystical">Theme</p>
-                      <p className="text-sm text-gray-300 font-mystical">
-                        Choose your preferred visual theme
-                      </p>
-                    </div>
-                    <select
-                      value={theme}
-                      onChange={(e) => setTheme(e.target.value as 'night' | 'day')}
-                      className="form-input"
-                    >
-                      <option value="night">Night Mode</option>
-                      <option value="day">Day Mode</option>
-                    </select>
-                  </div>
+                  <h4 className="text-lg font-medium text-gray-300 mb-2">Account Information</h4>
+                  <p className="text-gray-400 text-sm">
+                    Member since: {new Date(user.createdAt).toLocaleDateString()}
+                  </p>
+                  <p className="text-gray-400 text-sm">
+                    Last login: {new Date(user.lastLogin).toLocaleDateString()}
+                  </p>
                 </div>
 
-                <div>
-                  <h3 className="text-lg font-semibold mb-4 font-mystical">Account</h3>
-                  <div className="space-y-4">
-                    <button className="w-full p-4 glass-morphism rounded-xl border border-emerald-500/20 text-left hover:bg-emerald-500/10 transition-colors">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium text-white font-mystical">Change Password</p>
-                          <p className="text-sm text-gray-300 font-mystical">Update your account password</p>
-                        </div>
-                        <span className="text-gray-400">→</span>
+                {usage && (
+                  <div>
+                    <h4 className="text-lg font-medium text-gray-300 mb-2">Usage Statistics</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-gray-800 p-3 rounded-lg">
+                        <p className="text-gray-400 text-sm">Chart Generations</p>
+                        <p className="text-white font-semibold">{usage.usage?.chartGenerations || 0}</p>
                       </div>
-                    </button>
-                    
-                    <button
-                      onClick={handleLogout}
-                      className="w-full p-4 glass-morphism rounded-xl border border-red-500/20 text-left hover:bg-red-500/10 transition-colors"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium text-red-300 font-mystical">Sign Out</p>
-                          <p className="text-sm text-gray-300 font-mystical">Log out of your account</p>
-                        </div>
-                        <span className="text-red-400">→</span>
+                      <div className="bg-gray-800 p-3 rounded-lg">
+                        <p className="text-gray-400 text-sm">Audio Exports</p>
+                        <p className="text-white font-semibold">{usage.usage?.exports || 0}</p>
                       </div>
-                    </button>
+                    </div>
                   </div>
+                )}
+
+                <div>
+                  <h4 className="text-lg font-medium text-gray-300 mb-2">Danger Zone</h4>
+                  <button className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-white font-semibold transition-colors">
+                    Delete Account
+                  </button>
+                  <p className="text-gray-400 text-sm mt-2">
+                    This action cannot be undone. All your data will be permanently deleted.
+                  </p>
                 </div>
               </div>
-            </motion.div>
-          )}
-        </div>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Error Display */}
+      {error && (
+        <div className="glass-morphism rounded-2xl p-6 border border-red-500/20">
+          <p className="text-red-300">❌ {error}</p>
+        </div>
+      )}
     </div>
   );
 } 
