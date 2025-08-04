@@ -381,11 +381,11 @@ export class AstroTextGenerator {
       selectedPlanets: planets.map(planet => ({
         planet,
         data: chartData.planets[planet],
-        musical: planetaryMusic[planet]
+        musical: planetaryMusic[planet as keyof typeof planetaryMusic]
       })),
       selectedHouses: houses.map(house => ({
         house,
-        theme: houseThemes[house]
+        theme: houseThemes[house as keyof typeof houseThemes]
       })),
       overallMood: this.calculateOverallMood(planets, chartData)
     };
@@ -394,7 +394,10 @@ export class AstroTextGenerator {
   }
 
   private calculateOverallMood(planets: string[], chartData: ChartData): string {
-    const moods = planets.map(planet => planetaryMusic[planet]?.mood || 'neutral');
+    const moods = planets.map(planet => {
+      const planetMusic = planetaryMusic[planet as keyof typeof planetaryMusic];
+      return planetMusic?.mood || 'neutral';
+    });
     const moodCounts = moods.reduce((acc, mood) => {
       acc[mood] = (acc[mood] || 0) + 1;
       return acc;
@@ -405,10 +408,10 @@ export class AstroTextGenerator {
   }
 
   private explainMusicalElements(interpretation: any): string {
-    const instruments = interpretation.selectedPlanets.map(p => p.musical.instrument);
+    const instruments = interpretation.selectedPlanets.map((p: any) => p.musical.instrument);
     const uniqueInstruments = [...new Set(instruments)];
     
-    return `The ${uniqueInstruments.join(' and ')} create a ${interpretation.overallMood} atmosphere, with each instrument representing different planetary influences. The musical progression reflects the themes of ${interpretation.selectedHouses.map(h => h.theme).join(', ')}.`;
+    return `The ${uniqueInstruments.join(' and ')} create a ${interpretation.overallMood} atmosphere, with each instrument representing different planetary influences. The musical progression reflects the themes of ${interpretation.selectedHouses.map((h: any) => h.theme).join(', ')}.`;
   }
 
   private generateSandboxTitle(interpretation: any): string {
