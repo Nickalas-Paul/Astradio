@@ -230,7 +230,7 @@ export class SocialService {
       [userId, limit]
     );
 
-    return activity.map(item => ({
+    return activity.map((item: any) => ({
       ...item,
       chart_data: JSON.parse(item.chart_data),
       audio_config: item.audio_config ? JSON.parse(item.audio_config) : undefined,
@@ -281,7 +281,7 @@ export class SocialService {
       [userId]
     );
 
-    const sessionsWithData = recentSessions.map(session => ({
+    const sessionsWithData = recentSessions.map((session: any) => ({
       ...session,
       chart_data: JSON.parse(session.chart_data),
       audio_config: session.audio_config ? JSON.parse(session.audio_config) : undefined,

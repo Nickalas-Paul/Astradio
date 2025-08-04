@@ -405,7 +405,7 @@ export class FriendController {
 
       // Check friendship status for each user
       const usersWithStatus = await Promise.all(
-        users.map(async (user) => {
+        users.map(async (user: any) => {
           const friendship = await db.get(
             'SELECT status FROM friends WHERE ((user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?))',
             [req.user!.id, user.id, user.id, req.user!.id]

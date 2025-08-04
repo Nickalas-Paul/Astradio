@@ -112,7 +112,7 @@ export const validateInput = (schema: z.ZodSchema) => {
       const validatedData = schema.parse(req.body);
       req.body = validatedData;
       next();
-    } catch (error) {
+    } catch (error: unknown) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({
           success: false,

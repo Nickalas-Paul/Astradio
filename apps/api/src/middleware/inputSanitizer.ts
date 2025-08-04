@@ -45,7 +45,7 @@ export const sanitizePrompt = (prompt: string): string => {
 export const enhancedBirthDataSchema = z.object({
   date: z.string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format')
-    .refine((date) => {
+    .refine((date: string) => {
       const parsed = new Date(date);
       return !isNaN(parsed.getTime()) && 
              parsed.getFullYear() >= 1900 && 
@@ -133,7 +133,7 @@ export const validateEnhancedInput = (schema: z.ZodSchema) => {
       req.params = { ...req.params, ...validatedData };
       
       next();
-    } catch (error) {
+    } catch (error: unknown) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({
           success: false,

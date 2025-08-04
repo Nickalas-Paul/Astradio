@@ -113,7 +113,7 @@ export class DailyChartService {
       [startDate, endDate]
     );
 
-    return charts.map(chart => ({
+    return charts.map((chart: any) => ({
       ...chart,
       chart_data: JSON.parse(chart.chart_data),
       narration: chart.narration ? JSON.parse(chart.narration) : undefined,

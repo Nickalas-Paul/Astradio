@@ -101,7 +101,7 @@ export class SubscriptionController {
           checkoutUrl: `/checkout/${checkoutSession.id}`
         }
       });
-    } catch (error) {
+    } catch (error: unknown) {
       if (error instanceof z.ZodError) {
         res.status(400).json({
           success: false,
@@ -139,7 +139,7 @@ export class SubscriptionController {
         success: true,
         message: 'Checkout completed successfully'
       });
-    } catch (error) {
+    } catch (error: unknown) {
       if (error instanceof z.ZodError) {
         res.status(400).json({
           success: false,

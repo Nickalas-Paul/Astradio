@@ -150,7 +150,7 @@ export class SessionController {
       res.json({
         success: true,
         data: {
-          sessions: sessions.map(s => ({
+          sessions: sessions.map((s: any) => ({
             ...s,
             chart_data: null, // Don't include full chart data in list
             audio_config: null,

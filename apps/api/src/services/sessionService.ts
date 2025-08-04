@@ -106,7 +106,7 @@ export class SessionService {
       [userId, limit, offset]
     );
 
-    return sessions.map(session => ({
+    return sessions.map((session: any) => ({
       ...session,
       chart_data: JSON.parse(session.chart_data),
       audio_config: session.audio_config ? JSON.parse(session.audio_config) : undefined,
@@ -126,7 +126,7 @@ export class SessionService {
       [limit, offset]
     );
 
-    return sessions.map(session => ({
+    return sessions.map((session: any) => ({
       ...session,
       chart_data: JSON.parse(session.chart_data),
       audio_config: session.audio_config ? JSON.parse(session.audio_config) : undefined,
@@ -281,7 +281,7 @@ export class SessionService {
       [searchTerm, searchTerm, searchTerm, limit, offset]
     );
 
-    return sessions.map(session => ({
+    return sessions.map((session: any) => ({
       ...session,
       chart_data: JSON.parse(session.chart_data),
       audio_config: session.audio_config ? JSON.parse(session.audio_config) : undefined,
