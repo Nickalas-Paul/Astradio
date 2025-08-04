@@ -166,7 +166,10 @@ export class AstroTextGenerator {
   }
 
   private analyzeMusicalMood(planets: Record<string, PlanetaryData>): string {
-    const moods = Object.values(planets).map(p => planetaryMusic[p.planet]?.mood || 'neutral');
+    const moods = Object.values(planets).map(p => {
+      const planetMusic = planetaryMusic[p.planet as keyof typeof planetaryMusic];
+      return planetMusic?.mood || 'neutral';
+    });
     const moodCounts = moods.reduce((acc, mood) => {
       acc[mood] = (acc[mood] || 0) + 1;
       return acc;
@@ -197,14 +200,14 @@ export class AstroTextGenerator {
       'intense': 'Powerful'
     };
     
-    return `Today's Vibe: ${moodAdjectives[mood] || 'Cosmic'} ${planetNames}`;
+    return `Today's Vibe: ${moodAdjectives[mood as keyof typeof moodAdjectives] || 'Cosmic'} ${planetNames}`;
   }
 
   private generateDailyScript(transits: ChartData, houseProgression: number[]): string {
     const firstHouse = houseProgression[0];
     const lastHouse = houseProgression[houseProgression.length - 1];
     
-    return `The music begins in your ${houseThemes[firstHouse]}, building through each house until reaching ${houseThemes[lastHouse]}. Today's planetary dance creates a ${this.analyzeMusicalMood(transits.planets)} energy that flows through your entire chart.`;
+    return `The music begins in your ${houseThemes[firstHouse as keyof typeof houseThemes]}, building through each house until reaching ${houseThemes[lastHouse as keyof typeof houseThemes]}. Today's planetary dance creates a ${this.analyzeMusicalMood(transits.planets)} energy that flows through your entire chart.`;
   }
 
   private generateDailyDescription(transits: ChartData, userChart: ChartData, mood: string): string {
@@ -226,7 +229,7 @@ export class AstroTextGenerator {
           userPlanet: transitPlanet,
           aspect,
           house: transitData.house,
-          theme: houseThemes[transitData.house]
+          theme: houseThemes[transitData.house as keyof typeof houseThemes]
         });
       }
     }
@@ -252,7 +255,7 @@ export class AstroTextGenerator {
   }
 
   private getMusicalElement(aspect: string, planet: string): string {
-    const planetMusic = planetaryMusic[planet];
+    const planetMusic = planetaryMusic[planet as keyof typeof planetaryMusic];
     const aspectEffects = {
       'conjunction': 'intensified',
       'square': 'tension',
@@ -262,7 +265,7 @@ export class AstroTextGenerator {
       'no major aspect': 'subtle influence'
     };
     
-    return `${planetMusic.instrument} with ${aspectEffects[aspect]} energy`;
+    return `${planetMusic.instrument} with ${aspectEffects[aspect as keyof typeof aspectEffects]} energy`;
   }
 
   private generateAlignmentTitle(interactions: any[]): string {
@@ -282,7 +285,7 @@ export class AstroTextGenerator {
       'sextile': 1,
       'no major aspect': 0
     };
-    return strengths[aspect] || 0;
+    return strengths[aspect as keyof typeof strengths] || 0;
   }
 
   private generateAlignmentScript(interactions: any[], musicalElements: any[]): string {
@@ -299,9 +302,9 @@ export class AstroTextGenerator {
 
   private analyzeChartCompatibility(chart1: ChartData, chart2: ChartData): any {
     const compatibility = {
-      harmonies: [],
-      tensions: [],
-      overlaps: []
+      harmonies: [] as string[],
+      tensions: [] as string[],
+      overlaps: [] as string[]
     };
     
     // Analyze Sun-Moon combinations

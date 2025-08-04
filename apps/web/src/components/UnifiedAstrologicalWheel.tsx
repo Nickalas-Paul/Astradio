@@ -4,6 +4,7 @@ import React from 'react';
 import UniversalChartWheel from './UniversalChartWheel';
 
 interface Planet {
+  id: string;
   name: string;
   symbol: string;
   angle: number;
@@ -18,6 +19,7 @@ interface Aspect {
   to: string;
   type: 'conjunction' | 'sextile' | 'square' | 'trine' | 'opposition';
   angle: number;
+  orb: number;
 }
 
 interface UnifiedAstrologicalWheelProps {

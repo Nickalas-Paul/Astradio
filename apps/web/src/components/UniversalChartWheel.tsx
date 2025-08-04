@@ -437,9 +437,8 @@ export default function UniversalChartWheel({
           return (
             <g 
               key={planet.id || planet.name}
-              draggable={draggable}
-              onDragStart={(e) => handlePlanetDragStart(e, planet)}
-              onDragEnd={onPlanetDragEnd}
+              onDragStart={draggable ? (e) => handlePlanetDragStart(e, planet) : undefined}
+              onDragEnd={draggable ? onPlanetDragEnd : undefined}
               onClick={() => onPlanetClick?.(planet)}
               style={{ cursor: draggable || onPlanetClick ? 'pointer' : 'default' }}
             >
