@@ -4,7 +4,7 @@
   "installCommand": "npm install",
   "framework": "nextjs",
   "functions": {
-    "apps/web/.next/server/**/*.js": {
+    ".next/server/**/*.js": {
       "maxDuration": 30
     }
   },
@@ -43,7 +43,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://your-api-domain.com/api/$1"
+      "destination": "https://your-render-backend.onrender.com/api/$1"
     }
   ]
 } 
