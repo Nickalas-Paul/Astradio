@@ -10,8 +10,11 @@ COPY apps/api/package*.json ./apps/api/
 COPY apps/web/package*.json ./apps/web/
 COPY packages/*/package*.json ./packages/*/
 
-# Install dependencies
+# Install root dependencies
 RUN npm install
+
+# Install API dependencies specifically
+RUN cd apps/api && npm install
 
 # Copy source code
 COPY . .
