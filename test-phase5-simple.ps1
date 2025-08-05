@@ -18,7 +18,7 @@ try {
     $chartData = @{
         metadata = @{
             birth_datetime = "1990-05-15T14:30:00Z"
-            conversion_method = "prokerala"
+            conversion_method = "swiss_ephemeris"
             ayanamsa_correction = 0
             coordinate_system = "tropical"
         }

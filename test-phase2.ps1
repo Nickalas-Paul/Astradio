@@ -10,7 +10,7 @@ try {
     $health = Invoke-WebRequest -Uri "$API_BASE/health" -Method GET
     Write-Host "✅ Health check passed: $($health.Content | ConvertFrom-Json | Select-Object -ExpandProperty status)" -ForegroundColor Green
 
-    # 2. Generate a chart with real ProKerala data
+    # 2. Generate a chart with real Swiss Ephemeris data
     Write-Host ""
     Write-Host "2. Generating astrological chart..." -ForegroundColor Cyan
     $chartBody = @{
@@ -101,7 +101,7 @@ try {
     Write-Host "🎉 Phase 2 Audio Integration Test Complete!" -ForegroundColor Green
     Write-Host ""
     Write-Host "✅ All functionality working:" -ForegroundColor Green
-    Write-Host "   • Real ProKerala chart generation" -ForegroundColor White
+    Write-Host "   • Real Swiss Ephemeris chart generation" -ForegroundColor White
     Write-Host "   • Sequential audio playback" -ForegroundColor White
     Write-Host "   • Layered audio playback" -ForegroundColor White
     Write-Host "   • Audio status monitoring" -ForegroundColor White

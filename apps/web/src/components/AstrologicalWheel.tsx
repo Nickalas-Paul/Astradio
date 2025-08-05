@@ -20,6 +20,7 @@ interface Aspect {
   to: string;
   type: 'conjunction' | 'sextile' | 'square' | 'trine' | 'opposition';
   angle: number;
+  orb: number;
 }
 
 interface AstrologicalWheelProps {

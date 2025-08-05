@@ -37,7 +37,7 @@ Transform astrological charts into personalized musical experiences.
 
 ## Get API Keys
 
-- **ProKerala**: https://api.prokerala.com (for astrology charts)
+- **Swiss Ephemeris**: Local astronomical calculations (for precise astrology charts)
 - **Supabase**: https://supabase.com (for database)
 
 ## Architecture

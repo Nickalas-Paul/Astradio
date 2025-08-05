@@ -119,6 +119,7 @@ export default function AudioLabPage() {
               chart1={state.chartA.chart}
               chart2={state.chartB.chart}
               isMerging={state.isMerging}
+              onStartMerge={() => setState(prev => ({ ...prev, isMerging: true }))}
               onMergeComplete={() => setState(prev => ({ ...prev, mergeComplete: true }))}
             />
           </div>

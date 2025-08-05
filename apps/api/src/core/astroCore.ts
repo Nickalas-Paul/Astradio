@@ -1,5 +1,5 @@
-import axios from 'axios';
 import { AstroChart, BirthData, PlanetData, HouseData, SignData } from '../types';
+import SwissEphemerisService from '../services/swissEphemerisService';
 
 const signs: Array<{ name: string; element: 'Fire' | 'Earth' | 'Air' | 'Water'; modality: 'Cardinal' | 'Fixed' | 'Mutable' }> = [
   { name: 'Aries', element: 'Fire', modality: 'Cardinal' },
@@ -16,98 +16,56 @@ const signs: Array<{ name: string; element: 'Fire' | 'Earth' | 'Air' | 'Water'; 
   { name: 'Pisces', element: 'Water', modality: 'Mutable' }
 ];
 
-function toTropical(siderealDeg: number, ayanamsa: number): number {
-  const tropical = siderealDeg + ayanamsa;
-  return tropical >= 360 ? tropical - 360 : tropical;
-}
-
 function getSignData(degree: number): SignData {
   const index = Math.floor(degree / 30);
   return { ...signs[index], degree: degree % 30 };
 }
 
 export class AstroCore {
+  private swissEphService: SwissEphemerisService;
+
+  constructor() {
+    this.swissEphService = new SwissEphemerisService();
+  }
+
   async generateChart(birthData: BirthData): Promise<AstroChart> {
     try {
-      const datetime = encodeURIComponent(`${birthData.date}T${birthData.time}:00${this.getOffsetString(birthData.timezone)}`);
-      const coordinates = `${birthData.latitude},${birthData.longitude}`;
+      console.log('[Swiss Ephemeris] Generating chart with Swiss Ephemeris');
 
-      // Auth token
-      const tokenRes = await axios.post(
-        process.env.ASTRO_TOKEN_URL!,
-        new URLSearchParams({
-          grant_type: 'client_credentials',
-          client_id: process.env.ASTRO_CLIENT_ID!,
-          client_secret: process.env.ASTRO_CLIENT_SECRET!
-        }),
-        { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+      // Parse birth date and time
+      const [year, month, day] = birthData.date.split('-').map(Number);
+      const [hour, minute] = birthData.time.split(':').map(Number);
+      const birthDate = new Date(year, month - 1, day, hour, minute);
+      
+      // Calculate planetary positions using Swiss Ephemeris
+      const planets = await this.swissEphService.calculatePlanetaryPositions(
+        birthDate,
+        birthData.latitude,
+        birthData.longitude,
+        birthData.timezone
       );
-      const token = tokenRes.data.access_token;
-
-      // Planet positions
-      const planetUrl = `https://api.prokerala.com/v2/astrology/planet-position?ayanamsa=1&coordinates=${coordinates}&datetime=${datetime}`;
-      console.log('[ProKerala] Requesting:', planetUrl);
-      console.log('[ProKerala] Token:', token.substring(0, 20) + '...');
-      const planetRes = await axios.get(planetUrl, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      // Use ayanamsa correction of 24.0 for Lahiri
-      const ayanamsa = 24.0;
-
-      const planets: Record<string, PlanetData> = {};
-      for (const p of planetRes.data.data.planet_position) {
-        // Skip Ascendant, Rahu, Ketu - only include main planets
-        if (['Sun', 'Moon', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn'].includes(p.name)) {
-          const long = toTropical(p.longitude, ayanamsa);
-          planets[p.name] = {
-            longitude: long,
-            retrograde: p.is_retrograde,
-            house: p.position || 0,
-            sign: getSignData(long)
-          };
-        }
-      }
-
-      // For houses, we'll use the Ascendant position and calculate house cusps
-      const ascendant = planetRes.data.data.planet_position.find((p: any) => p.name === 'Ascendant');
-      const houses: Record<string, HouseData> = {};
-      if (ascendant) {
-        const ascLong = toTropical(ascendant.longitude, ayanamsa);
-        // Calculate house cusps (simplified - each house is 30 degrees)
-        for (let i = 1; i <= 12; i++) {
-          const houseLong = (ascLong + (i - 1) * 30) % 360;
-          houses[i.toString()] = {
-            cusp_longitude: houseLong,
-            sign: getSignData(houseLong)
-          };
-        }
-      }
-
-      return {
-        metadata: {
-          conversion_method: 'sidereal+ayanamsa',
-          ayanamsa_correction: ayanamsa,
-          birth_datetime: datetime,
-          coordinate_system: 'tropical'
-        },
-        planets,
-        houses
-      };
+      
+      // Calculate house cusps
+      const houses = await this.swissEphService.calculateHouseCusps(
+        birthDate,
+        birthData.latitude,
+        birthData.longitude,
+        birthData.timezone
+      );
+      
+      // Calculate aspects
+      const aspects = this.swissEphService.calculateAspects(planets);
+      
+      // Convert to AstroChart format
+      const chart = this.swissEphService.convertToAstroChart(planets, houses, aspects, birthData);
+      
+      console.log('[Swiss Ephemeris] Chart generated successfully');
+      return chart;
     } catch (error) {
-      console.error('[ProKerala Error]', error instanceof Error ? error.message : 'Unknown error');
-      if (error && typeof error === 'object' && 'response' in error) {
-        console.error('[ProKerala Response]', (error as any).response?.data);
-      }
+      console.error('[Swiss Ephemeris Error]', error instanceof Error ? error.message : 'Unknown error');
       console.warn('⚠️ Returning mock chart as fallback.');
       return this.getMockChart(birthData);
     }
-  }
-
-  private getOffsetString(tz: number): string {
-    const sign = tz >= 0 ? '+' : '-';
-    const hours = Math.abs(tz).toString().padStart(2, '0');
-    return `${sign}${hours}:00`;
   }
 
   async generateDailyChart(date?: string): Promise<AstroChart> {
@@ -125,7 +83,7 @@ export class AstroCore {
     return {
       metadata: {
         conversion_method: 'mock',
-        ayanamsa_correction: 24,
+        ayanamsa_correction: 0,
         birth_datetime: `${birthData.date}T${birthData.time}:00`,
         coordinate_system: 'tropical'
       },

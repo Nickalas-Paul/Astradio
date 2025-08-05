@@ -38,7 +38,7 @@ export default function ProfilePage() {
   return (
     <>
       <Navigation />
-      <UserProfile user={user} />
+      <UserProfile />
     </>
   );
 } 

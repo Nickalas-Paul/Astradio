@@ -363,4 +363,5 @@ try {
 } catch {
     Write-Host "❌ Test failed: $($_.Exception.Message)" -ForegroundColor Red
     Write-Host "Stack trace: $($_.ScriptStackTrace)" -ForegroundColor Red
+}
 } 

@@ -31,8 +31,7 @@
     "SESSION_MAX_AGE": "86400000",
     "ENABLE_DEBUG_MODE": "false",
     "SKIP_EMAIL_VERIFICATION": "true",
-    "ASTRO_CLIENT_ID": "your-prokerala-client-id",
-    "ASTRO_CLIENT_SECRET": "your-prokerala-client-secret",
-    "ASTRO_TOKEN_URL": "https://api.prokerala.com/v2/astrology/token"
+    "SWISS_EPHEMERIS_ENABLED": "true",
+    "SWISS_EPHEMERIS_PRECISION": "high"
   }
 } 

@@ -37,7 +37,7 @@ export default function GenreSelector() {
   };
 
   const handleClearGenre = () => {
-    setSelectedGenre(null);
+    setSelectedGenre('ambient');
     setIsOpen(false);
   };
 

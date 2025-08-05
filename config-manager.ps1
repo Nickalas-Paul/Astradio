@@ -84,11 +84,9 @@ NODE_ENV=development
 NEXT_PUBLIC_API_URL=http://localhost:3001
 FRONTEND_URL=http://localhost:3000
 
-# ProKerala API (get from https://api.prokerala.com)
-ASTRO_CLIENT_ID="your_prokerala_client_id"
-ASTRO_CLIENT_SECRET="your_prokerala_client_secret"
-ASTRO_TOKEN_URL="https://api.prokerala.com/token"
-ASTRO_NATAL_CHART_URL="https://api.prokerala.com/v2/astrology/kundli"
+# Swiss Ephemeris Integration (local calculations)
+SWISS_EPHEMERIS_ENABLED="true"
+SWISS_EPHEMERIS_PRECISION="high"
 
 # Supabase (get from https://supabase.com)
 NEXT_PUBLIC_SUPABASE_URL="your_supabase_url"
@@ -140,8 +138,8 @@ function Test-ConfigurationValidity {
         
         # Check for placeholder values
         $placeholderVars = @(
-            "your_prokerala_client_id",
-            "your_prokerala_client_secret",
+                    "true",
+        "high",
             "your_supabase_url",
             "your_supabase_anon_key"
         )
@@ -182,8 +180,8 @@ function Test-ConfigurationValidity {
     # Display results
     if ($errors.Count -gt 0) {
         Write-Host "`n❌ Configuration Errors:" -ForegroundColor Red
-        foreach ($error in $errors) {
-            Write-Host "   $error" -ForegroundColor Red
+        foreach ($err in $errors) {
+            Write-Host "   $err" -ForegroundColor Red
         }
     }
     

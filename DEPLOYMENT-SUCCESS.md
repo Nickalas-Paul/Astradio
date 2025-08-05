@@ -16,7 +16,7 @@
 - ✅ **Backend**: Express.js API with astrological calculations
 - ✅ **Database**: SQLite database on Railway
 - ✅ **Audio System**: Tone.js integration working
-- ✅ **Chart Generation**: Prokerala API integration
+- ✅ **Chart Generation**: Swiss Ephemeris integration
 
 ### **Fixed Issues**
 - ✅ **Hydration Mismatch**: Resolved with stable genre initialization

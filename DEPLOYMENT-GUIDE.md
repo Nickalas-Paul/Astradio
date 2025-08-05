@@ -10,7 +10,7 @@ This guide provides step-by-step instructions for deploying Astradio to producti
 - [ ] API builds successfully (`cd apps/api && npm run build`)
 - [ ] Frontend builds successfully (`cd apps/web && npm run build`)
 - [ ] Environment variables are prepared
-- [ ] Prokerala API keys are obtained
+- [ ] Swiss Ephemeris integration is active
 
 ## 1️⃣ Backend Deployment (API Server)
 
@@ -34,9 +34,8 @@ This guide provides step-by-step instructions for deploying Astradio to producti
    JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
    JWT_EXPIRES_IN=7d
    DATABASE_URL=./data/astradio.db
-   ASTRO_CLIENT_ID=your-prokerala-client-id
-   ASTRO_CLIENT_SECRET=your-prokerala-client-secret
-   ASTRO_TOKEN_URL=https://api.prokerala.com/v2/astrology/
+   SWISS_EPHEMERIS_ENABLED=true
+SWISS_EPHEMERIS_PRECISION=high
    RATE_LIMIT_WINDOW_MS=900000
    RATE_LIMIT_MAX_REQUESTS=100
    ENABLE_HTTPS=true
@@ -145,9 +144,8 @@ FRONTEND_URL=https://astradio.vercel.app
 JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
 JWT_EXPIRES_IN=7d
 DATABASE_URL=./data/astradio.db
-ASTRO_CLIENT_ID=your-prokerala-client-id
-ASTRO_CLIENT_SECRET=your-prokerala-client-secret
-ASTRO_TOKEN_URL=https://api.prokerala.com/v2/astrology/
+SWISS_EPHEMERIS_ENABLED=true
+SWISS_EPHEMERIS_PRECISION=high
 RATE_LIMIT_WINDOW_MS=900000
 RATE_LIMIT_MAX_REQUESTS=100
 ENABLE_HTTPS=true

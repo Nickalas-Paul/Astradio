@@ -57,10 +57,8 @@ import { SubscriptionController } from './subscriptions/subscriptionController';
 
 dotenv.config();
 
-// Log environment variables for debugging
-console.log('Loaded Client ID:', process.env.ASTRO_CLIENT_ID ? 'Present' : 'Missing');
-console.log('Loaded Client Secret:', process.env.ASTRO_CLIENT_SECRET ? 'Present' : 'Missing');
-console.log('Loaded Token URL:', process.env.ASTRO_TOKEN_URL);
+// Log Swiss Ephemeris integration status
+console.log('✅ Swiss Ephemeris integration active');
 
 // Set default values for required environment variables
 if (!process.env.JWT_SECRET) {
@@ -103,6 +101,9 @@ app.use(sanitizeInput);
 app.use(preventSQLInjection);
 app.use(preventXSS);
 app.use(logSuspiciousActivity);
+
+// Static file serving for audio files
+app.use('/audio', express.static(path.join(process.cwd(), 'public', 'audio')));
 
 // Health check (no rate limiting)
 app.get('/health', (req, res) => {
@@ -383,13 +384,38 @@ app.post('/api/audio/generate',
     console.log(`   Generated ${composition.notes.length} notes`);
     console.log(`   Audio buffer size: ${Buffer.from(audioBuffer).length} bytes`);
 
-    // Set response headers for audio streaming
-    res.setHeader('Content-Type', 'audio/wav');
-    res.setHeader('Content-Length', Buffer.from(audioBuffer).length);
-    res.setHeader('Accept-Ranges', 'bytes');
+    // Create unique filename
+    const timestamp = Date.now();
+    const chartId = chart_data.metadata?.birth_datetime?.replace(/[^0-9]/g, '') || timestamp;
+    const filename = `chart-${chartId}-${genre}-${duration}s.wav`;
+    const filePath = path.join(process.cwd(), 'public', 'audio', filename);
     
-    // Send audio buffer as ArrayBuffer
-    res.send(Buffer.from(audioBuffer));
+    // Ensure audio directory exists
+    const audioDir = path.join(process.cwd(), 'public', 'audio');
+    if (!fs.existsSync(audioDir)) {
+      fs.mkdirSync(audioDir, { recursive: true });
+    }
+    
+    // Save audio file to disk
+    fs.writeFileSync(filePath, Buffer.from(audioBuffer));
+    console.log(`   💾 Audio saved to: ${filePath}`);
+    
+    // Return file info and URL
+    const audioUrl = `/audio/${filename}`;
+    
+    res.json({
+      success: true,
+      data: {
+        audio_url: audioUrl,
+        file_path: filePath,
+        filename: filename,
+        duration: duration,
+        genre: genre,
+        chart_id: chartId,
+        file_size: Buffer.from(audioBuffer).length,
+        notes_generated: composition.notes.length
+      }
+    });
   } catch (error) {
     console.error('Audio generation failed:', error);
     res.status(500).json({
@@ -419,13 +445,37 @@ app.post('/api/audio/daily',
     console.log(`   Generated ${composition.notes.length} notes`);
     console.log(`   Audio buffer size: ${Buffer.from(audioBuffer).length} bytes`);
 
-    // Set response headers for audio streaming
-    res.setHeader('Content-Type', 'audio/wav');
-    res.setHeader('Content-Length', Buffer.from(audioBuffer).length);
-    res.setHeader('Accept-Ranges', 'bytes');
+    // Create unique filename for daily audio
+    const date = transit_data.date || new Date().toISOString().split('T')[0];
+    const filename = `daily-${date}-${genre}-${duration}s.wav`;
+    const filePath = path.join(process.cwd(), 'public', 'audio', filename);
     
-    // Send audio buffer as ArrayBuffer
-    res.send(Buffer.from(audioBuffer));
+    // Ensure audio directory exists
+    const audioDir = path.join(process.cwd(), 'public', 'audio');
+    if (!fs.existsSync(audioDir)) {
+      fs.mkdirSync(audioDir, { recursive: true });
+    }
+    
+    // Save audio file to disk
+    fs.writeFileSync(filePath, Buffer.from(audioBuffer));
+    console.log(`   💾 Daily audio saved to: ${filePath}`);
+    
+    // Return file info and URL
+    const audioUrl = `/audio/${filename}`;
+    
+    res.json({
+      success: true,
+      data: {
+        audio_url: audioUrl,
+        file_path: filePath,
+        filename: filename,
+        date: date,
+        duration: duration,
+        genre: genre,
+        file_size: Buffer.from(audioBuffer).length,
+        notes_generated: composition.notes.length
+      }
+    });
   } catch (error) {
     console.error('Daily audio generation failed:', error);
     res.status(500).json({
@@ -452,61 +502,30 @@ app.get('/api/audio/daily', async (req, res) => {
     const dailyChart = await astroCore.generateDailyChart(date);
     console.log('🎵 Daily chart generated:', {
       date: dailyChart.metadata?.birth_datetime,
-      planets: Object.keys(dailyChart.planets || {}).length,
-      aspects: 0 // AstroChart doesn't have aspects property
+      planets: Object.keys(dailyChart.planets || {}).length
     });
     
-    // Convert chart data to transit format for audio generation
-    const transitData = {
-      date: date,
-      planets: Object.entries(dailyChart.planets || {}).map(([name, planet]: [string, any]) => ({
-        name: name,
-        longitude: planet.longitude || 0,
-        house: planet.house || 1,
-        sign: planet.sign || 'Aries'
-      }))
-    };
-    
-    console.log(`🎵 Transit data prepared: ${transitData.planets.length} planets`);
-    console.log('🎵 Transit planets:', transitData.planets.map(p => `${p.name} in ${p.sign} (${p.longitude}°)`));
-    
-    // Test AudioGenerator import
-    console.log('🎵 AudioGenerator available:', typeof AudioGenerator);
+    // Create stable chart ID for file naming
+    const chartId = `daily-${date}-${genre}-${duration}s`;
     
     const audioGenerator = new AudioGenerator();
     console.log('🎵 AudioGenerator instance created');
     
-    console.log('🎵 Calling generateDailyAudio...');
-    const composition = audioGenerator.generateDailyAudio(transitData, duration, genre);
-    console.log('🎵 Composition generated:', {
-      notes: composition.notes?.length || 0,
-      duration: composition.duration,
-      totalDuration: composition.totalDuration,
-      sampleRate: composition.sampleRate
+    // Use the new generateAndSaveWAV method
+    console.log('🎵 Calling generateAndSaveWAV...');
+    const audioUrl = await audioGenerator.generateAndSaveWAV(dailyChart, chartId, genre, duration);
+    console.log('🎵 Audio saved and URL generated:', audioUrl);
+    
+    res.json({
+      success: true,
+      data: {
+        audio_url: audioUrl,
+        chart_id: chartId,
+        date: date,
+        duration: duration,
+        genre: genre
+      }
     });
-    
-    console.log('🎵 Calling generateWAVBuffer...');
-    const audioBuffer = audioGenerator.generateWAVBuffer(composition);
-    console.log('🎵 WAV buffer generated');
-    
-    console.log(`🎵 Generated composition: ${composition.notes?.length || 0} notes`);
-    console.log(`🎵 Audio buffer size: ${Buffer.from(audioBuffer).length} bytes`);
-    
-    if (Buffer.from(audioBuffer).length === 0) {
-      throw new Error('Generated audio buffer is empty');
-    }
-    
-    if (Buffer.from(audioBuffer).length < 1000) {
-      console.warn('⚠️ Audio buffer seems too small:', Buffer.from(audioBuffer).length, 'bytes');
-    }
-    
-    res.setHeader('Content-Type', 'audio/wav');
-    res.setHeader('Content-Length', Buffer.from(audioBuffer).length);
-    res.setHeader('Accept-Ranges', 'bytes');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.send(Buffer.from(audioBuffer));
-    
-    console.log(`🎵 Daily audio sent successfully (${Buffer.from(audioBuffer).length} bytes)`);
   } catch (error) {
     console.error('❌ Daily audio generation error:', error);
     console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack trace');

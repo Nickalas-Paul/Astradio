@@ -18,7 +18,7 @@ interface StripePaymentProps {
 }
 
 export default function StripePayment({ onSuccess, onCancel }: StripePaymentProps) {
-  const { user, checkSubscription } = useAuth();
+  const { user, checkSubscription, supabase } = useAuth();
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -97,7 +97,7 @@ export default function StripePayment({ onSuccess, onCancel }: StripePaymentProp
       const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
       
       // Get Supabase session
-      const { data: { session } } = await user.supabase.auth.getSession();
+      const { data: { session } } = await supabase.auth.getSession();
       
       if (!session?.access_token) {
         throw new Error('No session found');
@@ -107,7 +107,7 @@ export default function StripePayment({ onSuccess, onCancel }: StripePaymentProp
       const response = await fetch(`${API_BASE}/api/subscriptions/checkout`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${session.access_token}`,
+          'Authorization': `Bearer ${session!.access_token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -135,12 +135,16 @@ export default function StripePayment({ onSuccess, onCancel }: StripePaymentProp
 
   const simulateCheckout = async (sessionId: string, stripeSessionId: string) => {
     const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-    const { data: { session } } = await user.supabase.auth.getSession();
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.access_token) {
+      throw new Error('No session found');
+    }
     
     await fetch(`${API_BASE}/api/subscriptions/webhook`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${session.access_token}`,
+        'Authorization': `Bearer ${session!.access_token}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -158,7 +162,7 @@ export default function StripePayment({ onSuccess, onCancel }: StripePaymentProp
 
     try {
       const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-      const { data: { session } } = await user.supabase.auth.getSession();
+      const { data: { session } } = await supabase.auth.getSession();
       
       if (!session?.access_token) {
         throw new Error('No session found');
@@ -167,7 +171,7 @@ export default function StripePayment({ onSuccess, onCancel }: StripePaymentProp
       const response = await fetch(`${API_BASE}/api/subscriptions/cancel`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${session.access_token}`,
+          'Authorization': `Bearer ${session!.access_token}`,
           'Content-Type': 'application/json',
         },
       });
@@ -193,7 +197,7 @@ export default function StripePayment({ onSuccess, onCancel }: StripePaymentProp
 
     try {
       const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-      const { data: { session } } = await user.supabase.auth.getSession();
+      const { data: { session } } = await supabase.auth.getSession();
       
       if (!session?.access_token) {
         throw new Error('No session found');
@@ -202,7 +206,7 @@ export default function StripePayment({ onSuccess, onCancel }: StripePaymentProp
       const response = await fetch(`${API_BASE}/api/subscriptions/downgrade`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${session.access_token}`,
+          'Authorization': `Bearer ${session!.access_token}`,
           'Content-Type': 'application/json',
         },
       });

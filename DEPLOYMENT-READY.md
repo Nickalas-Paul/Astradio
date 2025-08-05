@@ -76,9 +76,8 @@ cd apps/api && npm install && npm run build && npm start
 - `PORT`: 3001
 - `JWT_SECRET`: astradio-production-jwt-secret-change-in-production
 - `DATABASE_URL`: ./data/astradio.db
-- `ASTRO_CLIENT_ID`: your-prokerala-client-id
-- `ASTRO_CLIENT_SECRET`: your-prokerala-client-secret
-- `ASTRO_TOKEN_URL`: https://api.prokerala.com/v2/astrology/token
+- `SWISS_EPHEMERIS_ENABLED`: true
+- `SWISS_EPHEMERIS_PRECISION`: high
 
 ---
 

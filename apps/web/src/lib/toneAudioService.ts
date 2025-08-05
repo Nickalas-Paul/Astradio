@@ -37,7 +37,7 @@ export interface ChartAudioConfig {
 }
 
 class ToneAudioService {
-  private synths: Map<string, Synth> = new Map();
+  private synths: Map<string, Tone.Synth> = new Map();
   private isInitialized = false;
   private isPlaying = false;
   private currentSequence: Tone.Part | null = null;
@@ -238,10 +238,10 @@ class ToneAudioService {
     return Math.min(1.0, baseVolume * houseVolume);
   }
 
-  private calculateHarmonyFrequency(aspect: any): number {
+  private calculateHarmonyFrequency(aspect: { type: string }): number {
     // Generate harmony frequency based on aspect type
     const baseFreq = 440; // A4
-    const aspectModulations = {
+    const aspectModulations: { [key: string]: number } = {
       'conjunction': 1.0,
       'sextile': 1.25,
       'square': 1.5,
@@ -283,7 +283,7 @@ class ToneAudioService {
       this.currentSequence = new Tone.Part((time, event) => {
         const synth = this.synths.get(event.instrument || 'sine');
         if (synth) {
-          const note = Tone.Frequency(event.pitch, 'Hz').toNote();
+          const note = Tone.Frequency(event.pitch).toNote();
           synth.triggerAttackRelease(note, event.duration, time, event.velocity || 0.7);
         }
       }, events.map(event => ({
@@ -293,9 +293,6 @@ class ToneAudioService {
         instrument: event.instrument || 'sine',
         velocity: event.velocity || 0.7
       })));
-
-      // Connect sequence to destination
-      this.currentSequence.toDestination();
 
       // Start playback
       await Tone.start();
@@ -403,5 +400,4 @@ class ToneAudioService {
 // Create singleton instance
 const toneAudioService = new ToneAudioService();
 
-export default toneAudioService;
-export type { NoteEvent, ChartAudioConfig }; 
+export default toneAudioService; 

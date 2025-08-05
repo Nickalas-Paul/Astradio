@@ -51,7 +51,6 @@ export default function AudioLabInterface({ onStateChange, state }: AudioLabInte
         <BirthDataForm
           onSubmit={handleChartAFormSubmit}
           isLoading={state.isGenerating}
-          initialData={state.chartA.formData}
         />
       </div>
 
@@ -97,7 +96,6 @@ export default function AudioLabInterface({ onStateChange, state }: AudioLabInte
           <BirthDataForm
             onSubmit={handleChartAFormSubmit}
             isLoading={state.isGenerating}
-            initialData={state.chartA.formData}
           />
           {state.chartA.chart && (
             <div className="mt-4">
@@ -158,7 +156,6 @@ export default function AudioLabInterface({ onStateChange, state }: AudioLabInte
                 <BirthDataForm
                   onSubmit={handleChartBFormSubmit}
                   isLoading={state.isGenerating}
-                  initialData={state.chartB.formData}
                 />
               ) : (
                 <div className="text-center py-4">
@@ -315,12 +312,11 @@ export default function AudioLabInterface({ onStateChange, state }: AudioLabInte
             <BirthDataForm
               onSubmit={handleChartAFormSubmit}
               isLoading={state.isGenerating}
-              initialData={state.chartA.formData}
             />
           ) : (
             <BlankChartWheel
-              onChartUpdate={(chart) => handleSandboxUpdate(chart, 'A')}
-              initialChart={state.chartA.chart}
+              size={300}
+              message="Enter your birth info to see your chart"
             />
           )}
 
@@ -363,12 +359,11 @@ export default function AudioLabInterface({ onStateChange, state }: AudioLabInte
                 <BirthDataForm
                   onSubmit={handleChartBFormSubmit}
                   isLoading={state.isGenerating}
-                  initialData={state.chartB.formData}
                 />
               ) : (
                 <BlankChartWheel
-                  onChartUpdate={(chart) => handleSandboxUpdate(chart, 'B')}
-                  initialChart={state.chartB.chart}
+                  size={300}
+                  message="Enter your birth info to see your chart"
                 />
               )}
 
@@ -646,7 +641,7 @@ export default function AudioLabInterface({ onStateChange, state }: AudioLabInte
             genre={state.selectedGenre || 'ambient'}
             mode={state.chartB.chart ? 'overlay' : 'moments'}
             onPlay={() => {
-              toneAudioService.play();
+              // Note: Audio playback is handled by UnifiedAudioControls
               onStateChange({
                 ...state,
                 audioStatus: { ...state.audioStatus, isPlaying: true }

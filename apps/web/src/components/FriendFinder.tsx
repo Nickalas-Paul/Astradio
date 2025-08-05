@@ -11,7 +11,19 @@ export default function FriendFinder() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   
   const { searchUsers, addFriend, getFriends } = useAuth();
-  const friends = getFriends();
+  const [friends, setFriends] = useState<any[]>([]);
+
+  useEffect(() => {
+    const loadFriends = async () => {
+      try {
+        const friendsList = await getFriends();
+        setFriends(friendsList);
+      } catch (error) {
+        console.error('Failed to load friends:', error);
+      }
+    };
+    loadFriends();
+  }, [getFriends]);
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;

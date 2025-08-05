@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { useAuth, SavedTrack } from '../context/AuthContext';
 
 interface LibraryManagerProps {
-  onSaveTrack: (track: Omit<SavedTrack, 'id' | 'createdAt' | 'playCount'>) => Promise<void>;
+  onSaveTrack: (track: Omit<SavedTrack, 'id' | 'createdAt' | 'playCount' | 'userId'>) => Promise<void>;
   onPlayTrack?: (trackId: string) => void;
   onShareTrack?: (trackId: string) => void;
 }
@@ -16,9 +16,22 @@ export default function LibraryManager({ onSaveTrack, onPlayTrack, onShareTrack 
   const [isPublic, setIsPublic] = useState(false);
   const [currentTrackData, setCurrentTrackData] = useState<any>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [savedTracks, setSavedTracks] = useState<SavedTrack[]>([]);
   
   const { getSavedTracks, deleteTrack } = useAuth();
-  const savedTracks = getSavedTracks();
+
+  // Load saved tracks on component mount
+  React.useEffect(() => {
+    const loadTracks = async () => {
+      try {
+        const tracks = await getSavedTracks();
+        setSavedTracks(tracks);
+      } catch (error) {
+        console.error('Failed to load tracks:', error);
+      }
+    };
+    loadTracks();
+  }, [getSavedTracks]);
 
   const handleSaveTrack = async (trackData: any, title: string, isPublic: boolean) => {
     setIsSaving(true);

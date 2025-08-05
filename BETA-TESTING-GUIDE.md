@@ -9,7 +9,7 @@ This guide is designed for UI designers and beta testers to evaluate Astradio's 
 ### ✅ Environment Setup
 - [ ] Backend deployed and accessible
 - [ ] Frontend deployed and accessible  
-- [ ] API keys configured (Prokerala)
+- [ ] Swiss Ephemeris integration active
 - [ ] Test accounts created
 - [ ] Cross-browser testing setup
 

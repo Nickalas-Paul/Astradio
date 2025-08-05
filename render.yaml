@@ -43,9 +43,7 @@ services:
         value: false
       - key: SKIP_EMAIL_VERIFICATION
         value: true
-      - key: ASTRO_CLIENT_ID
-        value: your-prokerala-client-id
-      - key: ASTRO_CLIENT_SECRET
-        value: your-prokerala-client-secret
-      - key: ASTRO_TOKEN_URL
-        value: https://api.prokerala.com/v2/astrology/token 
+              - key: SWISS_EPHEMERIS_ENABLED
+          value: true
+        - key: SWISS_EPHEMERIS_PRECISION
+          value: high 

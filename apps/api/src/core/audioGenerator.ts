@@ -1,4 +1,6 @@
 import { AstroChart, AspectData } from '../types';
+import fs from 'fs';
+import path from 'path';
 
 // Declare window for Node.js environment
 declare const window: any;
@@ -181,6 +183,22 @@ export class AudioGenerator {
     
     // Convert to WAV format
     return this.convertToWAV(audioBuffer, sampleRate);
+  }
+
+  async generateAndSaveWAV(chartData: AstroChart, chartId: string, genre: string = 'ambient', duration: number = 60): Promise<string> {
+    const composition = this.generateChartAudio(chartData, duration, genre);
+    const buffer = this.generateWAVBuffer(composition);
+    
+    const outputPath = path.resolve(process.cwd(), 'public', 'audio', `${chartId}.wav`);
+    
+    // Ensure audio directory exists
+    const audioDir = path.dirname(outputPath);
+    if (!fs.existsSync(audioDir)) {
+      fs.mkdirSync(audioDir, { recursive: true });
+    }
+    
+    fs.writeFileSync(outputPath, Buffer.from(buffer));
+    return `/audio/${chartId}.wav`; // public URL
   }
 
   private calculatePlanetFrequency(planetName: string, planetData: any): number {
