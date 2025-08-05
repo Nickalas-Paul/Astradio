@@ -426,8 +426,8 @@ export class AstroTextGenerator {
   }
 
   private generateSandboxDescription(interpretation: any, musicalExplanation: string): string {
-    const planetNames = interpretation.selectedPlanets.map(p => p.planet).join(', ');
-    const houseThemes = interpretation.selectedHouses.map(h => h.theme).join(', ');
+    const planetNames = interpretation.selectedPlanets.map((p: any) => p.planet).join(', ');
+    const houseThemes = interpretation.selectedHouses.map((h: any) => h.theme).join(', ');
     
     return `${musicalExplanation} By selecting ${planetNames} and focusing on ${houseThemes}, you've created a custom musical experiment that explores how these specific astrological elements interact. The ${interpretation.overallMood} mood reflects the dominant energy of your selection, while the varying instruments and house themes create a rich, layered composition that represents your unique astrological experiment.`;
   }
