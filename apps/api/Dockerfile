@@ -17,13 +17,12 @@ RUN cd packages/audio-mappings && npm install && npm run build
 # Build the API
 RUN cd apps/api && npm install && npm run build
 
-# Debug: Check if directories exist
-RUN ls -la apps/api/dist/
-RUN ls -la apps/api/dist/database/ || echo "database directory doesn't exist"
-RUN ls -la apps/api/src/database/
+# Ensure database directory exists and copy schema
+RUN mkdir -p apps/api/dist/database
+RUN cp apps/api/src/database/schema.sql apps/api/dist/database/schema.sql
 
-# Copy schema.sql to dist folder
-RUN mkdir -p apps/api/dist/database && cp apps/api/src/database/schema.sql apps/api/dist/database/schema.sql
+# Verify the file was copied
+RUN ls -la apps/api/dist/database/
 
 # Change to the API directory
 WORKDIR /usr/src/app/apps/api
