@@ -1,29 +1,33 @@
-# Use Node.js 18
-FROM node:18-alpine
+# Use Node LTS
+FROM node:18
 
-# Set working directory
-WORKDIR /app
+# Create app directory
+WORKDIR /usr/src/app
 
-# Copy package files
+# Copy package files first for better caching
 COPY package*.json ./
-COPY apps/api/package*.json ./apps/api/
-COPY apps/web/package*.json ./apps/web/
+
+# Copy workspace package files
 COPY packages/*/package*.json ./packages/*/
+COPY apps/*/package*.json ./apps/*/
 
-# Install root dependencies
+# Install dependencies
 RUN npm install
-
-# Install API dependencies specifically
-RUN cd apps/api && npm install
 
 # Copy source code
 COPY . .
 
-# Build the API
-RUN cd apps/api && npm run build
+# Build all packages in dependency order
+RUN npm run build
+
+# Change to the API directory
+WORKDIR /usr/src/app/apps/api
+
+# Build the API (packages are already built)
+RUN npm run build
 
 # Expose port
 EXPOSE 3001
 
 # Start the API
-CMD ["cd", "apps/api", "&&", "npm", "start"] 
+CMD ["npm", "run", "start"] 
