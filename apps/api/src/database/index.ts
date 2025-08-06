@@ -26,28 +26,32 @@ export async function initializeDatabase(): Promise<Database> {
   // Enable foreign keys
   await db.exec('PRAGMA foreign_keys = ON');
 
-  // Read and execute schema - try multiple locations
-  let schemaPath = path.join(__dirname, 'schema.sql');
+  // Read and execute schema - use absolute paths
+  const possiblePaths = [
+    path.join(__dirname, 'schema.sql'), // dist/database/schema.sql
+    path.join(process.cwd(), 'src', 'database', 'schema.sql'), // src/database/schema.sql
+    path.join(process.cwd(), 'apps', 'api', 'src', 'database', 'schema.sql'), // full path
+    path.join(process.cwd(), 'apps', 'api', 'dist', 'database', 'schema.sql') // copied path
+  ];
   
-  // If not found in dist, try src directory
-  if (!fs.existsSync(schemaPath)) {
-    schemaPath = path.join(__dirname, '..', 'src', 'database', 'schema.sql');
+  let schemaPath = null;
+  for (const p of possiblePaths) {
+    if (fs.existsSync(p)) {
+      schemaPath = p;
+      break;
+    }
   }
   
-  // If still not found, try relative to current working directory
-  if (!fs.existsSync(schemaPath)) {
-    schemaPath = path.join(process.cwd(), 'apps', 'api', 'src', 'database', 'schema.sql');
-  }
-  
-  console.log('🔍 Looking for schema.sql at:', schemaPath);
+  console.log('🔍 Looking for schema.sql at:', possiblePaths);
   console.log('📁 Current directory:', process.cwd());
   console.log('📁 __dirname:', __dirname);
   
-  if (!fs.existsSync(schemaPath)) {
+  if (!schemaPath) {
     console.error('❌ Schema file not found at any location');
-    throw new Error(`Schema file not found. Tried: ${schemaPath}`);
+    throw new Error(`Schema file not found. Tried: ${possiblePaths.join(', ')}`);
   }
   
+  console.log('✅ Found schema at:', schemaPath);
   const schema = fs.readFileSync(schemaPath, 'utf8');
   
   // Execute the entire schema as one statement to avoid parsing issues
