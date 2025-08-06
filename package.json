@@ -2,6 +2,10 @@
   "name": "astradio",
   "version": "1.0.0",
   "description": "Astrological Music Generator",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
   "scripts": {
     "dev": "cd apps/api && npm run dev",
     "start": "cd apps/api && npm start",
