@@ -23,7 +23,7 @@
     "morgan": "^1.10.0",
     "sqlite": "^5.0.1",
     "sqlite3": "^5.1.6",
-    "swisseph-wasm": "0.0.2",
+    "swisseph": "^0.5.15",
     "uuid": "^9.0.1",
     "xss-clean": "^0.1.4",
     "zod": "^3.22.4",
