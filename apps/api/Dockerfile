@@ -6,7 +6,6 @@ WORKDIR /usr/src/app
 
 # Copy package files first for better caching
 COPY package*.json ./
-COPY turbo.json ./
 
 # Copy workspace package files
 COPY packages/*/package*.json ./packages/*/
@@ -18,7 +17,7 @@ RUN npm install
 # Copy source code
 COPY . .
 
-# Build packages in dependency order
+# Build all packages in dependency order
 RUN npm run build
 
 # Change to the API directory

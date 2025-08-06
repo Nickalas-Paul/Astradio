@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "cd apps/api && npm run dev",
     "start": "cd apps/api && npm start",
-    "build": "cd apps/api && npm run build",
+    "build": "npm run build:packages && cd apps/api && npm run build",
+    "build:packages": "cd packages/astro-core && npm run build && cd ../audio-mappings && npm run build",
     "test": "echo \"No tests specified\" && exit 0"
   },
   "devDependencies": {

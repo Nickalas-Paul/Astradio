@@ -4,8 +4,13 @@ services:
     name: astradio-api
     env: node
     plan: free
-    buildCommand: npm install && npm run build
-    startCommand: npm start
+    buildCommand: |
+      cd apps/api
+      npm install
+      npm run build
+    startCommand: |
+      cd apps/api
+      npm start
     healthCheckPath: /health
     rootDir: apps/api
     envVars:
@@ -43,7 +48,7 @@ services:
         value: false
       - key: SKIP_EMAIL_VERIFICATION
         value: true
-              - key: SWISS_EPHEMERIS_ENABLED
-          value: true
-        - key: SWISS_EPHEMERIS_PRECISION
-          value: high 
+      - key: SWISS_EPHEMERIS_ENABLED
+        value: true
+      - key: SWISS_EPHEMERIS_PRECISION
+        value: high 
