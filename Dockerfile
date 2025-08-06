@@ -7,11 +7,17 @@ WORKDIR /usr/src/app
 # Copy the entire project
 COPY . .
 
-# Install all dependencies
+# Install root dependencies
 RUN npm install
 
-# Build workspace packages first
-RUN npm run build:packages
+# Install workspace package dependencies
+RUN cd packages/astro-core && npm install
+RUN cd packages/audio-mappings && npm install
+RUN cd apps/api && npm install
+
+# Build workspace packages
+RUN cd packages/astro-core && npm run build
+RUN cd packages/audio-mappings && npm run build
 
 # Build the API
 RUN cd apps/api && npm run build
