@@ -17,6 +17,9 @@ RUN cd packages/audio-mappings && npm install && npm run build
 # Build the API
 RUN cd apps/api && npm install && npm run build
 
+# Copy schema.sql to dist folder
+RUN cp apps/api/src/database/schema.sql apps/api/dist/database/schema.sql
+
 # Change to the API directory
 WORKDIR /usr/src/app/apps/api
 
