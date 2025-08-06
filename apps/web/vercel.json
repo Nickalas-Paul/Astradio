@@ -38,7 +38,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://your-render-backend.onrender.com/api/$1"
+      "destination": "https://astradio.onrender.com/api/$1"
     }
   ]
 } 
