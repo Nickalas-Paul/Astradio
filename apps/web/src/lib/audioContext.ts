@@ -111,9 +111,14 @@ class AudioContextService {
   private onHouseChange: ((house: number) => void) | null = null;
 
   constructor() {
-    // Only initialize audio context in browser environment
-    if (isBrowser) {
-      this.initializeAudioContext();
+    // Completely passive constructor - no initialization during SSR
+    // All initialization will be done explicitly via initialize() method
+  }
+
+  // Public method to initialize when needed
+  async initialize(): Promise<void> {
+    if (!this.audioContext && isBrowser) {
+      await this.initializeAudioContext();
     }
   }
 

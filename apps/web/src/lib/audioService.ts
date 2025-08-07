@@ -16,7 +16,15 @@ class AudioService {
   private isInitialized = false;
 
   constructor() {
-    this.initializeAudioContext();
+    // Completely passive constructor - no initialization during SSR
+    // All initialization will be done explicitly via initialize() method
+  }
+
+  // Public method to initialize when needed
+  async initialize(): Promise<void> {
+    if (!this.isInitialized && typeof window !== 'undefined') {
+      await this.initializeAudioContext();
+    }
   }
 
   private async initializeAudioContext() {
