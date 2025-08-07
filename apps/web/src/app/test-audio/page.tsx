@@ -21,7 +21,7 @@ export default function TestAudioPage() {
     
     try {
       addLog('Testing AudioContext...');
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
       addLog(`AudioContext state: ${audioContext.state}`);
       
       if (audioContext.state === 'suspended') {
