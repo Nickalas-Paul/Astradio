@@ -248,7 +248,7 @@ export default function AudioTextGenerator({
     
     // Add overlay influences
     if (overlayAnalysis) {
-      const totalElements = Object.values(overlayAnalysis.combinedElements).reduce((a: number, b: number) => a + b, 0 as number);
+      const totalElements = Object.values(overlayAnalysis.combinedElements).reduce((a: number, b: number) => a + b, 0);
       if (totalElements > 8) {
         influences.push("Rich planetary overlay creates complex harmonic textures");
       }
