@@ -89,10 +89,10 @@ export const sanitizeUserContent = (content: string): string => {
 
 // Secure API URL construction
 export const buildSecureAPIUrl = (endpoint: string): string => {
-  // Production API URL
-  const productionUrl = process.env.NEXT_PUBLIC_API_URL || 'https://astradio.vercel.app/api';
+  // Production API URL - hard-coded to Render until env works
+  const productionUrl = process.env.NEXT_PUBLIC_API_URL || 'https://astradio-api.onrender.com';
   // Development API URL
-  const developmentUrl = 'http://localhost:3001';
+  const developmentUrl = 'https://astradio-api.onrender.com';
   
   const baseUrl = process.env.NODE_ENV === 'production' ? productionUrl : developmentUrl;
   const sanitizedEndpoint = sanitizeInput(endpoint.replace(/^\/+/, ''));

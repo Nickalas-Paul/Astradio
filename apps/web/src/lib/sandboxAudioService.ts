@@ -45,7 +45,8 @@ export class SandboxAudioService {
         return;
       }
       
-      this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      this.audioContext = new AudioCtx();
     } catch (error) {
       console.error('Failed to initialize audio context:', error);
     }

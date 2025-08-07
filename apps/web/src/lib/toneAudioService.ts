@@ -70,7 +70,7 @@ class ToneAudioService {
       // Dynamically import Tone.js only in browser
       if (!Tone) {
         const toneModule = await import('tone');
-        Tone = toneModule.default || toneModule;
+        Tone = (toneModule as any).default || toneModule;
         console.log('🎵 Tone.js dynamically loaded');
       }
 
@@ -332,7 +332,7 @@ class ToneAudioService {
       console.log('🎵 Playing note events:', events.length);
 
       // Create a new sequence
-      this.currentSequence = new Tone.Part((time, event) => {
+      this.currentSequence = new Tone.Part((time: number, event: any) => {
         const synth = this.synths.get(event.instrument || 'sine');
         if (synth) {
           const note = Tone.Frequency(event.pitch).toNote();

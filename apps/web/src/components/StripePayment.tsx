@@ -94,7 +94,7 @@ export default function StripePayment({ onSuccess, onCancel }: StripePaymentProp
     setError(null);
 
     try {
-      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://astradio.onrender.com';
       
       // Get Supabase session
       const { data: { session } } = await supabase.auth.getSession();
@@ -134,7 +134,7 @@ export default function StripePayment({ onSuccess, onCancel }: StripePaymentProp
   };
 
   const simulateCheckout = async (sessionId: string, stripeSessionId: string) => {
-    const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://astradio.onrender.com';
     const { data: { session } } = await supabase.auth.getSession();
     
     if (!session?.access_token) {
@@ -161,7 +161,7 @@ export default function StripePayment({ onSuccess, onCancel }: StripePaymentProp
     setError(null);
 
     try {
-      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://astradio.onrender.com';
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session?.access_token) {
@@ -196,7 +196,7 @@ export default function StripePayment({ onSuccess, onCancel }: StripePaymentProp
     setError(null);
 
     try {
-      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://astradio.onrender.com';
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session?.access_token) {

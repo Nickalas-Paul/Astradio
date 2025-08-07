@@ -91,7 +91,7 @@ export default function UserProfile({ onClose }: UserProfileProps) {
     if (!user) return;
     
     try {
-      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://astradio.onrender.com';
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session?.access_token) throw new Error('No session');

@@ -119,7 +119,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchUserProfile = async (userId: string) => {
     try {
-      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://astradio.onrender.com';
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session?.access_token) return;
@@ -185,7 +185,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (data.user) {
         // Create user profile in our database
-        const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+        const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://astradio.onrender.com';
         const response = await fetch(`${API_BASE}/api/auth/signup`, {
           method: 'POST',
           headers: {
@@ -222,7 +222,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!user) throw new Error('No user logged in');
     
     try {
-      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://astradio.onrender.com';
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session?.access_token) throw new Error('No session');
@@ -251,7 +251,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!user) throw new Error('No user logged in');
     
     try {
-      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://astradio.onrender.com';
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session?.access_token) throw new Error('No session');
@@ -277,7 +277,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!user) throw new Error('No user logged in');
     
     try {
-      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://astradio.onrender.com';
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session?.access_token) throw new Error('No session');
@@ -301,7 +301,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!user) return [];
     
     try {
-      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://astradio.onrender.com';
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session?.access_token) return [];
@@ -327,7 +327,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!user) throw new Error('No user logged in');
     
     try {
-      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://astradio.onrender.com';
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session?.access_token) throw new Error('No session');
@@ -353,7 +353,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!user) throw new Error('No user logged in');
     
     try {
-      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://astradio.onrender.com';
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session?.access_token) throw new Error('No session');
@@ -379,7 +379,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!user) return [];
     
     try {
-      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://astradio.onrender.com';
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session?.access_token) return [];
@@ -403,7 +403,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const searchUsers = async (query: string): Promise<User[]> => {
     try {
-      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://astradio.onrender.com';
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session?.access_token) return [];
@@ -429,7 +429,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!user) return null;
     
     try {
-      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://astradio.onrender.com';
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session?.access_token) return null;
@@ -455,7 +455,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!user) return null;
     
     try {
-      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://astradio.onrender.com';
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session?.access_token) return null;

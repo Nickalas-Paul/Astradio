@@ -12,7 +12,8 @@ export const initializeAudioContext = async (): Promise<void> => {
   
   try {
     // Create audio context
-    audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+            const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+        audioContext = new AudioCtx();
     console.log('🎵 Audio context created, state:', audioContext.state);
     
     // Add click listener to start audio context on first user interaction
@@ -51,7 +52,8 @@ export const ensureAudioContext = async (): Promise<boolean> => {
     
     // If we don't have an audio context, create one
     if (!audioContext) {
-      audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      audioContext = new AudioCtx();
       console.log('🎵 Created new audio context');
     }
     
@@ -129,7 +131,8 @@ class AudioContextService {
         return;
       }
       
-      this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      this.audioContext = new AudioCtx();
       this.gainNode = this.audioContext.createGain();
       this.gainNode.connect(this.audioContext.destination);
       console.log('Audio context initialized successfully');

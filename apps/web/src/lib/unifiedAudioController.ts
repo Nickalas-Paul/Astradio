@@ -1,7 +1,8 @@
 // Unified Audio Controller for Astradio
 // Handles both API-generated WAV files and real-time Tone.js generation
 
-import getToneAudioService from './toneAudioService';
+// Remove top-level import to prevent SSR issues
+// import getToneAudioService from './toneAudioService';
 
 export interface AudioPlaybackOptions {
   mode: 'api' | 'realtime';
@@ -31,6 +32,7 @@ class UnifiedAudioController {
   };
   private onStatusChange: ((status: AudioStatus) => void) | null = null;
   private audioService: any = null;
+  private toneAudioService: any = null;
 
   constructor() {
     // Only initialize on client side
@@ -71,25 +73,31 @@ class UnifiedAudioController {
     });
   }
 
-  private setupToneServiceCallbacks() {
+  private async setupToneServiceCallbacks() {
     if (typeof window === 'undefined') return;
     
-    const toneService = getToneAudioService();
-    
-    toneService.onTimeUpdateCallback((time: number) => {
-      this.updateStatus({
-        currentTime: time,
-        isPlaying: toneService.getIsPlaying()
+    try {
+      // Dynamic import to prevent SSR issues
+      const { default: getToneAudioService } = await import('./toneAudioService');
+      this.toneAudioService = getToneAudioService();
+      
+      this.toneAudioService.onTimeUpdateCallback((time: number) => {
+        this.updateStatus({
+          currentTime: time,
+          isPlaying: this.toneAudioService.getIsPlaying()
+        });
       });
-    });
 
-    toneService.onErrorCallback((error: string) => {
-      this.updateStatus({
-        isLoading: false,
-        isPlaying: false,
-        error
+      this.toneAudioService.onErrorCallback((error: string) => {
+        this.updateStatus({
+          isLoading: false,
+          isPlaying: false,
+          error
+        });
       });
-    });
+    } catch (error) {
+      console.error('Failed to initialize tone audio service:', error);
+    }
   }
 
   private updateStatus(updates: Partial<AudioStatus>) {
@@ -151,19 +159,24 @@ class UnifiedAudioController {
 
       console.log('🎵 Playing chart audio via real-time generation...');
       
-      const toneService = getToneAudioService();
-      const noteEvents = toneService.generateNoteEvents(chartData, genre);
+      // Ensure tone service is initialized
+      if (!this.toneAudioService) {
+        const { default: getToneAudioService } = await import('./toneAudioService');
+        this.toneAudioService = getToneAudioService();
+      }
+      
+      const noteEvents = this.toneAudioService.generateNoteEvents(chartData, genre);
       
       if (noteEvents.length === 0) {
         throw new Error('No musical events generated from chart data');
       }
 
-      const success = await toneService.playNoteEvents(noteEvents);
+      const success = await this.toneAudioService.playNoteEvents(noteEvents);
       
       this.updateStatus({
         isLoading: false,
         isPlaying: success,
-        duration: toneService.getDuration()
+        duration: this.toneAudioService.getDuration()
       });
       
       return success;
@@ -195,19 +208,24 @@ class UnifiedAudioController {
         mode: 'overlay'
       };
       
-      const toneService = getToneAudioService();
-      const noteEvents = toneService.generateNoteEvents(mergedChartData, genre);
+      // Ensure tone service is initialized
+      if (!this.toneAudioService) {
+        const { default: getToneAudioService } = await import('./toneAudioService');
+        this.toneAudioService = getToneAudioService();
+      }
+      
+      const noteEvents = this.toneAudioService.generateNoteEvents(mergedChartData, genre);
       
       if (noteEvents.length === 0) {
         throw new Error('No musical events generated from overlay data');
       }
 
-      const success = await toneService.playNoteEvents(noteEvents);
+      const success = await this.toneAudioService.playNoteEvents(noteEvents);
       
       this.updateStatus({
         isLoading: false,
         isPlaying: success,
-        duration: toneService.getDuration()
+        duration: this.toneAudioService.getDuration()
       });
       
       return success;
@@ -228,9 +246,8 @@ class UnifiedAudioController {
     
     if (this.currentMode === 'api') {
       this.audioService.stop();
-    } else if (this.currentMode === 'realtime') {
-      const toneService = getToneAudioService();
-      toneService.stop();
+    } else if (this.currentMode === 'realtime' && this.toneAudioService) {
+      this.toneAudioService.stop();
     }
     
     this.updateStatus({
@@ -245,9 +262,8 @@ class UnifiedAudioController {
     
     if (this.currentMode === 'api') {
       this.audioService.pause();
-    } else if (this.currentMode === 'realtime') {
-      const toneService = getToneAudioService();
-      toneService.pause();
+    } else if (this.currentMode === 'realtime' && this.toneAudioService) {
+      this.toneAudioService.pause();
     }
     
     this.updateStatus({
@@ -259,9 +275,8 @@ class UnifiedAudioController {
   setVolume(volume: number): void {
     if (this.currentMode === 'api') {
       this.audioService.setVolume(volume);
-    } else if (this.currentMode === 'realtime') {
-      const toneService = getToneAudioService();
-      toneService.setVolume(volume);
+    } else if (this.currentMode === 'realtime' && this.toneAudioService) {
+      this.toneAudioService.setVolume(volume);
     }
   }
 
@@ -281,8 +296,9 @@ class UnifiedAudioController {
     if (this.audioService) {
       this.audioService.destroy();
     }
-    const toneService = getToneAudioService();
-    toneService.destroy();
+    if (this.toneAudioService) {
+      this.toneAudioService.destroy();
+    }
   }
 }
 

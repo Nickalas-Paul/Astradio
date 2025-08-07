@@ -36,7 +36,8 @@ class AudioService {
       }
       
       // Create audio context with proper error handling
-      this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      this.audioContext = new AudioCtx();
       
       // Create gain node for volume control
       this.gainNode = this.audioContext.createGain();

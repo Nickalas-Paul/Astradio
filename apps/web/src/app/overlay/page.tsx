@@ -41,7 +41,7 @@ export default function OverlayPage() {
 
   const { selectedGenre, getRandomGenre } = useGenre();
 
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://astradio.onrender.com';
 
   // Load daily chart on component mount
   useEffect(() => {

@@ -433,7 +433,7 @@ export default function AudioLabInterface({ onStateChange, state }: AudioLabInte
     onStateChange({ ...state, isGenerating: true, error: null });
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/charts/generate`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://astradio.onrender.com'}/api/charts/generate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -472,7 +472,7 @@ export default function AudioLabInterface({ onStateChange, state }: AudioLabInte
     onStateChange({ ...state, isGenerating: true, error: null });
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/charts/generate`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://astradio.onrender.com'}/api/charts/generate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -553,7 +553,7 @@ export default function AudioLabInterface({ onStateChange, state }: AudioLabInte
           mode: 'overlay'
         };
 
-        audioResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/audio/overlay`, {
+        audioResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://astradio.onrender.com'}/api/audio/overlay`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -567,7 +567,7 @@ export default function AudioLabInterface({ onStateChange, state }: AudioLabInte
           mode: state.chartA.mode
         };
 
-        audioResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/audio/sequential`, {
+        audioResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://astradio.onrender.com'}/api/audio/sequential`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

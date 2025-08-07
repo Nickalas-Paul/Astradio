@@ -1,22 +1,23 @@
-import React, { useEffect } from 'react';
-import Navigation from './Navigation';
-import ChartDisplay from './ChartDisplay';
-import UnifiedAudioControls from './UnifiedAudioControls';
-import GenreDropdown from './GenreDropdown';
-import BirthDataForm from './BirthDataForm';
-import BlankChartWheel from './BlankChartWheel';
-import GeneratedTextDisplay from './GeneratedTextDisplay';
-import ChartLayoutWrapper from './ChartLayoutWrapper';
-import AudioLabModeSwitcher from './AudioLabModeSwitcher';
-import ChartMergeAnimation from './ChartMergeAnimation';
-import SandboxMode from './SandboxMode';
-import AudioTextGenerator from './AudioTextGenerator';
-import { FormData } from '../types';
-import { useGenre } from '../context/GenreContext';
-import { buildSecureAPIUrl, clientRateLimiter } from '../lib/security';
-import { useAudioLabStore } from '../stores/audioLabStore';
+'use client';
 
-export default function InlineAudioLab() {
+import React, { useEffect } from 'react';
+import Navigation from '../../components/Navigation';
+import ChartDisplay from '../../components/ChartDisplay';
+import UnifiedAudioControls from '../../components/UnifiedAudioControls';
+import GenreDropdown from '../../components/GenreDropdown';
+import BirthDataForm from '../../components/BirthDataForm';
+import BlankChartWheel from '../../components/BlankChartWheel';
+import GeneratedTextDisplay from '../../components/GeneratedTextDisplay';
+import ChartLayoutWrapper from '../../components/ChartLayoutWrapper';
+import AudioLabModeSwitcher from '../../components/AudioLabModeSwitcher';
+import ChartMergeAnimation from '../../components/ChartMergeAnimation';
+import SandboxMode from '../../components/SandboxMode';
+import { FormData } from '../../types';
+import { useGenre } from '../../context/GenreContext';
+import { buildSecureAPIUrl, clientRateLimiter } from '../../lib/security';
+import { useAudioLabStore } from '../../stores/audioLabStore';
+
+export default function AudioClientOnlyPage() {
   const { selectedGenre, getRandomGenre } = useGenre();
   const {
     viewMode,
@@ -38,30 +39,21 @@ export default function InlineAudioLab() {
     showInterpretation,
     setShowInterpretation,
     sandboxPlanets,
-    setSandboxPlanets,
-    dailyChart,
-    setDailyChart,
-    activateLabMode,
-    resetToDaily
+    setSandboxPlanets
   } = useAudioLabStore();
 
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://astradio.onrender.com';
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://astradio-api.onrender.com';
 
   // Load daily chart on component mount
   useEffect(() => {
-    if (viewMode === 'daily') {
-      loadDailyChart();
-    }
-  }, [viewMode]);
+    loadDailyChart();
+  }, []);
 
   // Set up Tone.js audio service callbacks
   useEffect(() => {
-    // Only initialize on client side
-    if (typeof window === 'undefined') return;
-    
     const initializeAudio = async () => {
       try {
-        const { default: getToneAudioService } = await import('../lib/toneAudioService');
+        const { default: getToneAudioService } = await import('../../lib/toneAudioService');
         const toneAudioService = getToneAudioService();
         
         toneAudioService.onTimeUpdateCallback((time: number) => {
@@ -78,30 +70,8 @@ export default function InlineAudioLab() {
           setAudioStatus((prev: any) => ({ ...prev, isLoading: false, error }));
         });
 
-        // Handle user interaction to enable audio
-        const handleUserInteraction = async () => {
-          try {
-            // Try to resume audio context on first user interaction
-            if (typeof window !== 'undefined' && (window as any).Tone) {
-              await (window as any).Tone.context.resume();
-              console.log('🎵 Audio context resumed on user interaction');
-            }
-          } catch (error) {
-            console.error('❌ Failed to resume audio context:', error);
-          }
-        };
-
-        // Add event listeners for user interaction
-        const events = ['click', 'touchstart', 'keydown'];
-        events.forEach(event => {
-          document.addEventListener(event, handleUserInteraction, { once: true });
-        });
-
         return () => {
           toneAudioService.stop();
-          events.forEach(event => {
-            document.removeEventListener(event, handleUserInteraction);
-          });
         };
       } catch (error) {
         console.error('Failed to initialize audio service:', error);
@@ -135,7 +105,6 @@ export default function InlineAudioLab() {
       const data = await response.json();
       
       if (data.success) {
-        setDailyChart(data.data.chart);
         setCharts((prev: any) => ({
           ...prev,
           chart2: data.data.chart
@@ -237,8 +206,7 @@ export default function InlineAudioLab() {
         }
       };
 
-      // Dynamic import to prevent SSR issues
-      const { default: getToneAudioService } = await import('../lib/toneAudioService');
+      const { default: getToneAudioService } = await import('../../lib/toneAudioService');
       const toneAudioService = getToneAudioService();
       const noteEvents = toneAudioService.generateNoteEvents(mergedChartData, genre);
       
@@ -295,26 +263,18 @@ export default function InlineAudioLab() {
     await generateOverlayAudio(charts.chart1, charts.chart2, genre);
   };
 
-  const handleStop = () => {
-    // Dynamic import to prevent SSR issues
-    import('../lib/toneAudioService').then(({ default: getToneAudioService }) => {
-      const toneAudioService = getToneAudioService();
-      toneAudioService.stop();
-      setAudioStatus((prev: any) => ({ ...prev, isPlaying: false }));
-    }).catch(error => {
-      console.error('Failed to stop audio:', error);
-    });
+  const handleStop = async () => {
+    const { default: getToneAudioService } = await import('../../lib/toneAudioService');
+    const toneAudioService = getToneAudioService();
+    toneAudioService.stop();
+    setAudioStatus((prev: any) => ({ ...prev, isPlaying: false }));
   };
 
-  const handlePause = () => {
-    // Dynamic import to prevent SSR issues
-    import('../lib/toneAudioService').then(({ default: getToneAudioService }) => {
-      const toneAudioService = getToneAudioService();
-      toneAudioService.pause();
-      setAudioStatus((prev: any) => ({ ...prev, isPlaying: false }));
-    }).catch(error => {
-      console.error('Failed to pause audio:', error);
-    });
+  const handlePause = async () => {
+    const { default: getToneAudioService } = await import('../../lib/toneAudioService');
+    const toneAudioService = getToneAudioService();
+    toneAudioService.pause();
+    setAudioStatus((prev: any) => ({ ...prev, isPlaying: false }));
   };
 
   const handleSandboxPlanetsChange = (planets: any[]) => {
@@ -323,74 +283,6 @@ export default function InlineAudioLab() {
 
   const canGenerateOverlay = charts.chart1 && charts.chart2;
 
-  // Daily View
-  if (viewMode === 'daily') {
-    return (
-      <ChartLayoutWrapper
-        title="Astradio"
-        subtitle="Your daily cosmic soundtrack"
-        genre={selectedGenre || 'ambient'}
-        showGenre={true}
-      >
-        <Navigation />
-        
-        <div className="container mx-auto px-6 py-12">
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-white mb-4 font-sans">
-              Your Daily Cosmic Soundtrack
-            </h1>
-            <p className="text-lg text-slate-300 mb-8 font-light">
-              Experience today's astrological energy through music
-            </p>
-          </div>
-
-          {/* Daily Chart Display */}
-          {dailyChart ? (
-            <div className="bg-slate-900/50 backdrop-blur-md rounded-2xl p-8 border border-emerald-500/20 max-w-4xl mx-auto mb-8 shadow-lg">
-              <ChartDisplay chart={dailyChart} />
-            </div>
-          ) : (
-            <div className="bg-slate-900/50 backdrop-blur-md rounded-2xl p-8 border border-emerald-500/20 max-w-4xl mx-auto mb-8 shadow-lg">
-              <div className="text-center">
-                <BlankChartWheel 
-                  size={400}
-                  message="Loading today's cosmic energy..."
-                  showGrid={true}
-                />
-              </div>
-            </div>
-          )}
-
-          {/* CTA Button */}
-          <div className="text-center mb-8">
-            <button
-              onClick={activateLabMode}
-              className="px-8 py-4 bg-emerald-600 hover:bg-emerald-700 rounded-xl text-white font-semibold transition-colors text-lg shadow-lg"
-            >
-              Discover What Your Chart Sounds Like
-            </button>
-          </div>
-
-          {/* Genre Selection */}
-          <div className="mb-8 w-full max-w-md mx-auto">
-            <GenreDropdown
-              selectedGenre={selectedGenre || 'ambient'}
-              onGenreChange={handleGenreChange}
-              disabled={isLoading}
-            />
-          </div>
-
-          {error && (
-            <div className="mt-6 p-6 bg-red-500/20 border border-red-500/30 rounded-xl max-w-4xl mx-auto">
-              <p className="text-red-300 font-sans text-center">{error}</p>
-            </div>
-          )}
-        </div>
-      </ChartLayoutWrapper>
-    );
-  }
-
-  // Lab View
   return (
     <ChartLayoutWrapper
       title="Audio Lab"
@@ -401,16 +293,6 @@ export default function InlineAudioLab() {
       <Navigation />
       
       <div className="container mx-auto px-6 py-12">
-        {/* Back to Daily Button */}
-        <div className="flex justify-between items-center mb-8">
-          <button
-            onClick={resetToDaily}
-            className="px-4 py-2 bg-slate-600 hover:bg-slate-700 rounded-lg text-white font-medium transition-colors shadow-md"
-          >
-            ← Back to Daily Chart
-          </button>
-        </div>
-
         {/* Mode Switcher */}
         <AudioLabModeSwitcher
           currentMode={activeLabMode as any}
@@ -426,14 +308,6 @@ export default function InlineAudioLab() {
             disabled={isLoading}
           />
         </div>
-
-        {/* Audio Text Generator - Always visible in lab mode */}
-        <AudioTextGenerator
-          mode={activeLabMode as any}
-          chartA={charts.chart1}
-          chartB={charts.chart2}
-          isVisible={viewMode === 'lab'}
-        />
 
         {/* Generate Mode */}
         {activeLabMode === 'natal' && (
