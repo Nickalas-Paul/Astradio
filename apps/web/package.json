@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@astradio/audio-mappings": "file:../../packages/audio-mappings",
     "@supabase/supabase-js": "2.53.0",
     "@types/dompurify": "^3.0.5",
     "@types/three": "^0.158.0",
