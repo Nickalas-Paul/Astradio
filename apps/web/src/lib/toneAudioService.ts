@@ -49,10 +49,8 @@ class ToneAudioService {
   private duration = 0;
 
   constructor() {
-    // Don't initialize immediately during SSR
-    if (typeof window !== 'undefined') {
-      this.initializeTone();
-    }
+    // Completely passive constructor - no initialization during SSR
+    // All initialization will be done explicitly via initialize() method
   }
 
   // Public method to initialize when needed
@@ -161,6 +159,7 @@ class ToneAudioService {
 
   // Generate note events from chart data
   generateNoteEvents(chart: any, genre: string = 'ambient'): NoteEvent[] {
+    // This method should work even without Tone.js (for SSR compatibility)
     const events: NoteEvent[] = [];
     let currentTime = 0;
 
@@ -294,6 +293,15 @@ class ToneAudioService {
   // Play note events using Tone.js
   async playNoteEvents(events: NoteEvent[]): Promise<boolean> {
     try {
+      // Ensure we're initialized before attempting to play
+      if (!this.isInitialized) {
+        await this.initialize();
+        if (!this.isInitialized) {
+          this.handleError('Audio service not initialized');
+          return false;
+        }
+      }
+
       if (!Tone) {
         console.error('❌ Tone.js not loaded');
         this.handleError('Tone.js not available');
@@ -309,14 +317,6 @@ class ToneAudioService {
         } catch (resumeError) {
           console.error('❌ Failed to resume audio context:', resumeError);
           this.handleError('Audio context suspended. Please click anywhere on the page to enable audio playback.');
-          return false;
-        }
-      }
-
-      if (!this.isInitialized) {
-        await this.initializeTone();
-        if (!this.isInitialized) {
-          this.handleError('Audio service not initialized');
           return false;
         }
       }
