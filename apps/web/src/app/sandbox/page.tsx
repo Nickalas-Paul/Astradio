@@ -13,7 +13,6 @@ import GenreDropdown from '../../components/GenreDropdown';
 import { AstroChart, AudioStatus, AspectData } from '../../types';
 import { useGenre } from '../../context/GenreContext';
 import { sandboxInterpretationService, PlanetPlacement, PlacementInterpretation } from '../../lib/sandboxInterpretationService';
-import getToneAudioService from '../../lib/toneAudioService';
 
 export default function SandboxPage() {
   const [chart, setChart] = useState<AstroChart | null>(null);
@@ -36,10 +35,37 @@ export default function SandboxPage() {
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
   const [placementInterpretations, setPlacementInterpretations] = useState<PlacementInterpretation[]>([]);
   const [currentPlacement, setCurrentPlacement] = useState<PlacementInterpretation | null>(null);
+  const [toneAudioService, setToneAudioService] = useState<any>(null);
 
   const { selectedGenre, getRandomGenre } = useGenre();
 
   const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
+  // Initialize ToneAudioService only on client side
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      import('../../lib/toneAudioService').then((module) => {
+        const getToneAudioService = module.default;
+        const service = getToneAudioService();
+        setToneAudioService(service);
+        
+        // Set up callbacks
+        service.onTimeUpdateCallback((time: number) => {
+          setAudioStatus(prev => ({
+            ...prev,
+            currentSession: prev.currentSession ? {
+              ...prev.currentSession,
+              currentTime: time
+            } : null
+          }));
+        });
+
+        service.onErrorCallback((error: string) => {
+          setAudioStatus(prev => ({ ...prev, isLoading: false, error }));
+        });
+      });
+    }
+  }, []);
 
   const handleGenreChange = (newGenre: string) => {
     // Update genre context
@@ -47,39 +73,17 @@ export default function SandboxPage() {
     console.log('Genre changed to:', newGenre);
   };
 
-  // Set up Tone.js audio service callbacks
-  useEffect(() => {
-    const toneAudioService = getToneAudioService();
-    
-    toneAudioService.onTimeUpdateCallback((time) => {
-      setAudioStatus(prev => ({
-        ...prev,
-        currentSession: prev.currentSession ? {
-          ...prev.currentSession,
-          currentTime: time
-        } : null
-      }));
-    });
-
-    toneAudioService.onErrorCallback((error) => {
-      setAudioStatus(prev => ({ ...prev, isLoading: false, error }));
-    });
-
-    return () => {
-      toneAudioService.stop();
-    };
-  }, []);
-
   // Monitor audio service status
   useEffect(() => {
+    if (!toneAudioService) return;
+    
     const checkAudioStatus = () => {
-      const toneAudioService = getToneAudioService();
       setIsAudioPlaying(toneAudioService.getIsPlaying());
     };
 
     const interval = setInterval(checkAudioStatus, 100);
     return () => clearInterval(interval);
-  }, []);
+  }, [toneAudioService]);
 
   const createMockChart = () => {
     const mockChart: AstroChart = {
@@ -143,11 +147,10 @@ export default function SandboxPage() {
   };
 
   const generateSandboxAudio = async (chartData: AstroChart) => {
-    if (!chartData) return;
+    if (!chartData || !toneAudioService) return;
 
     try {
       // Stop any existing audio
-      const toneAudioService = getToneAudioService();
       toneAudioService.stop();
 
       // Generate note events for the sandbox chart with enhanced processing
@@ -323,8 +326,9 @@ export default function SandboxPage() {
     setDetectedAspects([]);
     setPlacementInterpretations([]);
     setCurrentPlacement(null);
-    const toneAudioService = getToneAudioService();
-    toneAudioService.stop();
+    if (toneAudioService) {
+      toneAudioService.stop();
+    }
     setIsAudioPlaying(false);
   };
 
@@ -338,14 +342,16 @@ export default function SandboxPage() {
   };
 
   const handleStop = () => {
-    const toneAudioService = getToneAudioService();
-    toneAudioService.stop();
+    if (toneAudioService) {
+      toneAudioService.stop();
+    }
     setAudioStatus(prev => ({ ...prev, isPlaying: false }));
   };
 
   const handlePause = () => {
-    const toneAudioService = getToneAudioService();
-    toneAudioService.pause();
+    if (toneAudioService) {
+      toneAudioService.pause();
+    }
     setAudioStatus(prev => ({ ...prev, isPlaying: false }));
   };
 
