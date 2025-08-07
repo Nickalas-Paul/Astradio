@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { AstroChart, AudioStatus } from '../types';
-import toneAudioService from '../lib/toneAudioService';
 
 interface UnifiedAudioControlsProps {
   chartData: AstroChart;
@@ -35,9 +34,25 @@ export default function UnifiedAudioControls({
   const [volume, setVolume] = useState(0.7);
   const [tempo, setTempo] = useState(120);
   const [showAdvancedControls, setShowAdvancedControls] = useState(true);
+  const [toneAudioService, setToneAudioService] = useState<any>(null);
 
   // Real-time audio visualization
   const [audioLevels, setAudioLevels] = useState<number[]>([]);
+
+  // Initialize toneAudioService dynamically
+  useEffect(() => {
+    const initializeAudio = async () => {
+      try {
+        const { default: getToneAudioService } = await import('../lib/toneAudioService');
+        const service = getToneAudioService();
+        setToneAudioService(service);
+      } catch (error) {
+        console.error('Failed to initialize audio service:', error);
+      }
+    };
+
+    initializeAudio();
+  }, []);
 
   useEffect(() => {
     if (audioStatus?.isPlaying) {
@@ -53,8 +68,8 @@ export default function UnifiedAudioControls({
 
   // Handle play button click - connect to toneAudioService
   const handlePlay = async () => {
-    if (!chartData) {
-      console.error('No chart data available for playback');
+    if (!chartData || !toneAudioService) {
+      console.error('No chart data or audio service available for playback');
       return;
     }
 
@@ -81,13 +96,17 @@ export default function UnifiedAudioControls({
 
   // Handle stop button click
   const handleStop = () => {
-    toneAudioService.stop();
+    if (toneAudioService) {
+      toneAudioService.stop();
+    }
     onStop(); // Call the parent's onStop callback
   };
 
   // Handle pause button click
   const handlePause = () => {
-    toneAudioService.pause();
+    if (toneAudioService) {
+      toneAudioService.pause();
+    }
     onPause(); // Call the parent's onPause callback
   };
 
@@ -158,7 +177,9 @@ export default function UnifiedAudioControls({
 
   const handleVolumeChange = (newVolume: number) => {
     setVolume(newVolume);
-    toneAudioService.setVolume(newVolume);
+    if (toneAudioService) {
+      toneAudioService.setVolume(newVolume);
+    }
     onVolumeChange?.(newVolume);
   };
 
