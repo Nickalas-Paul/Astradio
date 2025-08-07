@@ -8,7 +8,6 @@ import UnifiedAudioControls from './UnifiedAudioControls';
 import GenreDropdown from './GenreDropdown';
 import { FormData, AstroChart, AudioStatus } from '../types';
 import { buildSecureAPIUrl, clientRateLimiter } from '../lib/security';
-import toneAudioService from '../lib/toneAudioService';
 
 interface ChartData {
   chart: AstroChart | null;
@@ -24,6 +23,22 @@ interface AudioLabInterfaceProps {
 export default function AudioLabInterface({ onStateChange, state }: AudioLabInterfaceProps) {
   const [userLevel, setUserLevel] = useState<'new' | 'returning' | 'power'>('new');
   const [showAdvancedControls, setShowAdvancedControls] = useState(false);
+  const [toneAudioService, setToneAudioService] = useState<any>(null);
+
+  // Initialize toneAudioService dynamically
+  useEffect(() => {
+    const initializeAudio = async () => {
+      try {
+        const { default: getToneAudioService } = await import('../lib/toneAudioService');
+        const service = getToneAudioService();
+        setToneAudioService(service);
+      } catch (error) {
+        console.error('Failed to initialize audio service:', error);
+      }
+    };
+
+    initializeAudio();
+  }, []);
 
   // Progressive disclosure based on user level
   const getInterfaceForLevel = () => {

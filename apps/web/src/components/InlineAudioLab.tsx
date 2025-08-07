@@ -14,7 +14,6 @@ import AudioTextGenerator from './AudioTextGenerator';
 import { FormData } from '../types';
 import { useGenre } from '../context/GenreContext';
 import { buildSecureAPIUrl, clientRateLimiter } from '../lib/security';
-import getToneAudioService from '../lib/toneAudioService';
 import { useAudioLabStore } from '../stores/audioLabStore';
 
 export default function InlineAudioLab() {
@@ -60,47 +59,56 @@ export default function InlineAudioLab() {
     // Only initialize on client side
     if (typeof window === 'undefined') return;
     
-    const toneAudioService = getToneAudioService();
-    
-    toneAudioService.onTimeUpdateCallback((time: number) => {
-      setAudioStatus((prev: any) => ({
-        ...prev,
-        currentSession: prev.currentSession ? {
-          ...prev.currentSession,
-          currentTime: time
-        } : null
-      }));
-    });
-
-    toneAudioService.onErrorCallback((error: string) => {
-      setAudioStatus((prev: any) => ({ ...prev, isLoading: false, error }));
-    });
-
-    // Handle user interaction to enable audio
-    const handleUserInteraction = async () => {
+    const initializeAudio = async () => {
       try {
-        // Try to resume audio context on first user interaction
-        if (typeof window !== 'undefined' && window.Tone) {
-          await window.Tone.context.resume();
-          console.log('🎵 Audio context resumed on user interaction');
-        }
+        const { default: getToneAudioService } = await import('../lib/toneAudioService');
+        const toneAudioService = getToneAudioService();
+        
+        toneAudioService.onTimeUpdateCallback((time: number) => {
+          setAudioStatus((prev: any) => ({
+            ...prev,
+            currentSession: prev.currentSession ? {
+              ...prev.currentSession,
+              currentTime: time
+            } : null
+          }));
+        });
+
+        toneAudioService.onErrorCallback((error: string) => {
+          setAudioStatus((prev: any) => ({ ...prev, isLoading: false, error }));
+        });
+
+        // Handle user interaction to enable audio
+        const handleUserInteraction = async () => {
+          try {
+            // Try to resume audio context on first user interaction
+            if (typeof window !== 'undefined' && window.Tone) {
+              await window.Tone.context.resume();
+              console.log('🎵 Audio context resumed on user interaction');
+            }
+          } catch (error) {
+            console.error('❌ Failed to resume audio context:', error);
+          }
+        };
+
+        // Add event listeners for user interaction
+        const events = ['click', 'touchstart', 'keydown'];
+        events.forEach(event => {
+          document.addEventListener(event, handleUserInteraction, { once: true });
+        });
+
+        return () => {
+          toneAudioService.stop();
+          events.forEach(event => {
+            document.removeEventListener(event, handleUserInteraction);
+          });
+        };
       } catch (error) {
-        console.error('❌ Failed to resume audio context:', error);
+        console.error('Failed to initialize audio service:', error);
       }
     };
 
-    // Add event listeners for user interaction
-    const events = ['click', 'touchstart', 'keydown'];
-    events.forEach(event => {
-      document.addEventListener(event, handleUserInteraction, { once: true });
-    });
-
-    return () => {
-      toneAudioService.stop();
-      events.forEach(event => {
-        document.removeEventListener(event, handleUserInteraction);
-      });
-    };
+    initializeAudio();
   }, [setAudioStatus]);
 
   const loadDailyChart = async () => {

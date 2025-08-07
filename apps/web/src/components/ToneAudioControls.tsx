@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import toneAudioService, { NoteEvent } from '../lib/toneAudioService';
 
 interface ToneAudioControlsProps {
   chartData: any;
@@ -19,6 +18,15 @@ interface AudioStatus {
   duration: number;
   volume: number;
   error: string | null;
+}
+
+interface NoteEvent {
+  pitch: number;
+  duration: number;
+  startTime: number;
+  volume?: number;
+  instrument?: string;
+  velocity?: number;
 }
 
 export default function ToneAudioControls({ 
@@ -39,33 +47,49 @@ export default function ToneAudioControls({
   });
 
   const [noteEvents, setNoteEvents] = useState<NoteEvent[]>([]);
+  const [toneAudioService, setToneAudioService] = useState<any>(null);
+
+  // Initialize toneAudioService dynamically
+  useEffect(() => {
+    const initializeAudio = async () => {
+      try {
+        const { default: getToneAudioService } = await import('../lib/toneAudioService');
+        const service = getToneAudioService();
+        setToneAudioService(service);
+        
+        // Set up event listeners
+        service.onTimeUpdateCallback((time) => {
+          setStatus(prev => ({ ...prev, currentTime: time }));
+        });
+
+        service.onErrorCallback((error) => {
+          setStatus(prev => ({ ...prev, error, isLoading: false }));
+        });
+      } catch (error) {
+        console.error('Failed to initialize audio service:', error);
+      }
+    };
+
+    initializeAudio();
+  }, []);
 
   useEffect(() => {
-    // Set up event listeners
-    toneAudioService.onTimeUpdateCallback((time) => {
-      setStatus(prev => ({ ...prev, currentTime: time }));
-    });
-
-    toneAudioService.onErrorCallback((error) => {
-      setStatus(prev => ({ ...prev, error, isLoading: false }));
-    });
+    if (!toneAudioService || !chartData) return;
 
     // Generate note events when chart data changes
-    if (chartData) {
-      const events = toneAudioService.generateNoteEvents(chartData, genre);
-      setNoteEvents(events);
-      setStatus(prev => ({ ...prev, duration: toneAudioService.getDuration() }));
-    }
+    const events = toneAudioService.generateNoteEvents(chartData, genre);
+    setNoteEvents(events);
+    setStatus(prev => ({ ...prev, duration: toneAudioService.getDuration() }));
 
     // Cleanup
     return () => {
       toneAudioService.stop();
     };
-  }, [chartData, genre]);
+  }, [chartData, genre, toneAudioService]);
 
   const handlePlay = async () => {
-    if (!chartData) {
-      setStatus(prev => ({ ...prev, error: 'No chart data available' }));
+    if (!chartData || !toneAudioService) {
+      setStatus(prev => ({ ...prev, error: 'No chart data or audio service available' }));
       return;
     }
 
