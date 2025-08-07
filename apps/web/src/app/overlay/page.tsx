@@ -14,7 +14,6 @@ import DualChartMerge from '../../components/DualChartMerge';
 import ChartLayoutWrapper from '../../components/ChartLayoutWrapper';
 import { AstroChart, AudioStatus, FormData } from '../../types';
 import { useGenre } from '../../context/GenreContext';
-import { melodicGenerator } from '@astradio/audio-mappings';
 import { buildSecureAPIUrl, clientRateLimiter } from '../../lib/security';
 
 interface DualChartData {

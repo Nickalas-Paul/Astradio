@@ -13,7 +13,6 @@ import GenreDropdown from '../../components/GenreDropdown';
 import AstrologicalWheel from '../../components/AstrologicalWheel';
 import { AstroChart, AudioStatus, FormData } from '../../types';
 import { useGenre } from '../../context/GenreContext';
-import { melodicGenerator } from '@astradio/audio-mappings';
 import { buildSecureAPIUrl, clientRateLimiter } from '../../lib/security';
 
 export default function ChartPage() {
@@ -127,6 +126,7 @@ export default function ChartPage() {
 
     try {
       // Generate note events using Tone.js
+      const { default: getToneAudioService } = await import('../../lib/toneAudioService');
       const toneAudioService = getToneAudioService();
       const noteEvents = toneAudioService.generateNoteEvents(chartData, genre);
       
