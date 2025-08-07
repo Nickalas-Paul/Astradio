@@ -1,7 +1,16 @@
 'use client';
 
 import React, { useState } from 'react';
-import { NoteEvent } from '../lib/toneAudioService';
+// Removed top-level import: import { NoteEvent } from '../lib/toneAudioService';
+
+// Define NoteEvent type locally to avoid SSR issues
+interface NoteEvent {
+  pitch: number;
+  startTime: number;
+  duration: number;
+  velocity?: number;
+  volume?: number;
+}
 
 interface ExportControlsProps {
   chart: any;

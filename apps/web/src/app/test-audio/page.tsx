@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import getToneAudioService from '../../lib/toneAudioService';
+// Removed top-level import: import getToneAudioService from '../../lib/toneAudioService';
 
 export default function TestAudioPage() {
   const [status, setStatus] = useState<string>('');
@@ -41,6 +41,8 @@ export default function TestAudioPage() {
     
     try {
       addLog('Testing Tone.js...');
+      // Dynamic import to avoid SSR issues
+      const { default: getToneAudioService } = await import('../../lib/toneAudioService');
       const toneService = getToneAudioService();
       
       // Test with a simple note
