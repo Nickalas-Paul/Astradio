@@ -1,7 +1,8 @@
 // Tone.js Audio Service for Astradio
 // Replaces WAV generation with real-time, responsive audio playback
 
-import * as Tone from 'tone';
+// Remove static import - will be loaded dynamically
+let Tone: any = null;
 
 export interface NoteEvent {
   pitch: number;
@@ -37,10 +38,10 @@ export interface ChartAudioConfig {
 }
 
 class ToneAudioService {
-  private synths: Map<string, Tone.Synth> = new Map();
+  private synths: Map<string, any> = new Map();
   private isInitialized = false;
   private isPlaying = false;
-  private currentSequence: Tone.Part | null = null;
+  private currentSequence: any = null;
   private volume = 0.7;
   private onTimeUpdate: ((time: number) => void) | null = null;
   private onError: ((error: string) => void) | null = null;
@@ -68,8 +69,15 @@ class ToneAudioService {
         return;
       }
 
+      // Dynamically import Tone.js only in browser
+      if (!Tone) {
+        const toneModule = await import('tone');
+        Tone = toneModule.default || toneModule;
+        console.log('🎵 Tone.js dynamically loaded');
+      }
+
       // Check if Tone is available
-      if (typeof Tone === 'undefined') {
+      if (!Tone) {
         console.warn('🎵 Tone.js not available, skipping initialization');
         return;
       }
@@ -100,6 +108,8 @@ class ToneAudioService {
   }
 
   private initializeSynths() {
+    if (!Tone) return;
+
     // Create different synth types for different instruments
     const synthTypes = {
       'sine': new Tone.Synth({
@@ -127,12 +137,12 @@ class ToneAudioService {
     // Add effects to synths
     Object.entries(synthTypes).forEach(([name, synth]) => {
       // Add reverb
-              const reverb = new Tone.Reverb(1.5);
+      const reverb = new Tone.Reverb(1.5);
       synth.connect(reverb);
       reverb.toDestination();
       
       // Add chorus for richer sound
-              const chorus = new Tone.Chorus(1.5, 2.5, 0.5);
+      const chorus = new Tone.Chorus(1.5, 2.5, 0.5);
       synth.connect(chorus);
       chorus.toDestination();
       
@@ -284,6 +294,12 @@ class ToneAudioService {
   // Play note events using Tone.js
   async playNoteEvents(events: NoteEvent[]): Promise<boolean> {
     try {
+      if (!Tone) {
+        console.error('❌ Tone.js not loaded');
+        this.handleError('Tone.js not available');
+        return false;
+      }
+
       // Check if audio context is suspended (autoplay restriction)
       if (Tone.context.state === 'suspended') {
         console.log('🎵 Audio context suspended - attempting to resume...');
@@ -348,7 +364,7 @@ class ToneAudioService {
   }
 
   private startTimeUpdate(): void {
-    if (!this.onTimeUpdate) return;
+    if (!this.onTimeUpdate || !Tone) return;
 
     const updateTime = () => {
       if (this.isPlaying) {
@@ -395,7 +411,9 @@ class ToneAudioService {
 
   setVolume(volume: number): void {
     this.volume = Math.max(0, Math.min(1, volume));
-    Tone.Destination.volume.value = this.volume;
+    if (Tone) {
+      Tone.Destination.volume.value = this.volume;
+    }
     console.log(`🔊 Volume set to: ${Math.round(this.volume * 100)}%`);
   }
 
