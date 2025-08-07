@@ -15,7 +15,6 @@ import SandboxMode from '../../components/SandboxMode';
 import { FormData } from '../../types';
 import { useGenre } from '../../context/GenreContext';
 import { buildSecureAPIUrl, clientRateLimiter } from '../../lib/security';
-import getToneAudioService from '../../lib/toneAudioService';
 import { useAudioLabStore } from '../../stores/audioLabStore';
 
 export default function AudioLabPage() {
@@ -52,25 +51,34 @@ export default function AudioLabPage() {
 
   // Set up Tone.js audio service callbacks
   useEffect(() => {
-    const toneAudioService = getToneAudioService();
-    
-    toneAudioService.onTimeUpdateCallback((time: number) => {
-      setAudioStatus((prev: any) => ({
-        ...prev,
-        currentSession: prev.currentSession ? {
-          ...prev.currentSession,
-          currentTime: time
-        } : null
-      }));
-    });
+    const initializeAudio = async () => {
+      try {
+        const { default: getToneAudioService } = await import('../../lib/toneAudioService');
+        const toneAudioService = getToneAudioService();
+        
+        toneAudioService.onTimeUpdateCallback((time: number) => {
+          setAudioStatus((prev: any) => ({
+            ...prev,
+            currentSession: prev.currentSession ? {
+              ...prev.currentSession,
+              currentTime: time
+            } : null
+          }));
+        });
 
-    toneAudioService.onErrorCallback((error: string) => {
-      setAudioStatus((prev: any) => ({ ...prev, isLoading: false, error }));
-    });
+        toneAudioService.onErrorCallback((error: string) => {
+          setAudioStatus((prev: any) => ({ ...prev, isLoading: false, error }));
+        });
 
-    return () => {
-      toneAudioService.stop();
+        return () => {
+          toneAudioService.stop();
+        };
+      } catch (error) {
+        console.error('Failed to initialize audio service:', error);
+      }
     };
+
+    initializeAudio();
   }, [setAudioStatus]);
 
   const loadDailyChart = async () => {
@@ -198,6 +206,7 @@ export default function AudioLabPage() {
         }
       };
 
+      const { default: getToneAudioService } = await import('../../lib/toneAudioService');
       const toneAudioService = getToneAudioService();
       const noteEvents = toneAudioService.generateNoteEvents(mergedChartData, genre);
       
@@ -254,13 +263,15 @@ export default function AudioLabPage() {
     await generateOverlayAudio(charts.chart1, charts.chart2, genre);
   };
 
-  const handleStop = () => {
+  const handleStop = async () => {
+    const { default: getToneAudioService } = await import('../../lib/toneAudioService');
     const toneAudioService = getToneAudioService();
     toneAudioService.stop();
     setAudioStatus((prev: any) => ({ ...prev, isPlaying: false }));
   };
 
-  const handlePause = () => {
+  const handlePause = async () => {
+    const { default: getToneAudioService } = await import('../../lib/toneAudioService');
     const toneAudioService = getToneAudioService();
     toneAudioService.pause();
     setAudioStatus((prev: any) => ({ ...prev, isPlaying: false }));

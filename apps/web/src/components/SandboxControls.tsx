@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { sandboxAudioService, SandboxAudioSession } from '../lib/sandboxAudioService';
+import { SandboxAudioSession } from '../lib/sandboxAudioService';
 import { AstroChart, AspectData } from '../types';
 
 interface SandboxControlsProps {
@@ -30,10 +30,25 @@ export default function SandboxControls({
   isAudioPlaying,
   onAudioStatusChange
 }: SandboxControlsProps) {
+  const [sandboxAudioService, setSandboxAudioService] = useState<any>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showLoadModal, setShowLoadModal] = useState(false);
   const [savedSessions, setSavedSessions] = useState<SandboxAudioSession[]>([]);
+
+  // Initialize sandboxAudioService dynamically
+  useEffect(() => {
+    const initializeAudio = async () => {
+      try {
+        const { sandboxAudioService } = await import('../lib/sandboxAudioService');
+        setSandboxAudioService(sandboxAudioService);
+      } catch (error) {
+        console.error('Failed to initialize sandbox audio service:', error);
+      }
+    };
+
+    initializeAudio();
+  }, []);
 
   const handleExport = async () => {
     if (!chart) return;
@@ -197,7 +212,7 @@ export default function SandboxControls({
       </div>
 
       {/* Session Info */}
-      {sandboxAudioService.getCurrentSession() && (
+      {sandboxAudioService?.getCurrentSession() && (
         <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
           <h4 className="text-sm font-semibold text-emerald-300 mb-2">Current Session</h4>
           <div className="text-xs text-gray-300 space-y-1">

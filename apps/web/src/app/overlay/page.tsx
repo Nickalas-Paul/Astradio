@@ -16,7 +16,6 @@ import { AstroChart, AudioStatus, FormData } from '../../types';
 import { useGenre } from '../../context/GenreContext';
 import { melodicGenerator } from '@astradio/audio-mappings';
 import { buildSecureAPIUrl, clientRateLimiter } from '../../lib/security';
-import getToneAudioService from '../../lib/toneAudioService';
 
 interface DualChartData {
   chart1: AstroChart | null;
@@ -52,25 +51,34 @@ export default function OverlayPage() {
 
   // Set up Tone.js audio service callbacks
   useEffect(() => {
-    const toneAudioService = getToneAudioService();
-    
-    toneAudioService.onTimeUpdateCallback((time: number) => {
-      setAudioStatus(prev => ({
-        ...prev,
-        currentSession: prev.currentSession ? {
-          ...prev.currentSession,
-          currentTime: time
-        } : null
-      }));
-    });
+    const initializeAudio = async () => {
+      try {
+        const { default: getToneAudioService } = await import('../../lib/toneAudioService');
+        const toneAudioService = getToneAudioService();
+        
+        toneAudioService.onTimeUpdateCallback((time: number) => {
+          setAudioStatus(prev => ({
+            ...prev,
+            currentSession: prev.currentSession ? {
+              ...prev.currentSession,
+              currentTime: time
+            } : null
+          }));
+        });
 
-    toneAudioService.onErrorCallback((error: string) => {
-      setAudioStatus(prev => ({ ...prev, isLoading: false, error }));
-    });
+        toneAudioService.onErrorCallback((error: string) => {
+          setAudioStatus(prev => ({ ...prev, isLoading: false, error }));
+        });
 
-    return () => {
-      toneAudioService.stop();
+        return () => {
+          toneAudioService.stop();
+        };
+      } catch (error) {
+        console.error('Failed to initialize audio service:', error);
+      }
     };
+
+    initializeAudio();
   }, []);
 
   const loadDailyChart = async () => {
@@ -191,6 +199,7 @@ export default function OverlayPage() {
       };
 
       // Generate note events for the overlay with enhanced processing
+      const { default: getToneAudioService } = await import('../../lib/toneAudioService');
       const toneAudioService = getToneAudioService();
       const noteEvents = toneAudioService.generateNoteEvents(mergedChartData, genre);
       
@@ -407,13 +416,15 @@ export default function OverlayPage() {
     await generateOverlayAudio(charts.chart1, charts.chart2, genre);
   };
 
-  const handleStop = () => {
+  const handleStop = async () => {
+    const { default: getToneAudioService } = await import('../../lib/toneAudioService');
     const toneAudioService = getToneAudioService();
     toneAudioService.stop();
     setAudioStatus(prev => ({ ...prev, isPlaying: false }));
   };
 
-  const handlePause = () => {
+  const handlePause = async () => {
+    const { default: getToneAudioService } = await import('../../lib/toneAudioService');
     const toneAudioService = getToneAudioService();
     toneAudioService.pause();
     setAudioStatus(prev => ({ ...prev, isPlaying: false }));

@@ -15,7 +15,6 @@ import { AstroChart, AudioStatus, FormData } from '../../types';
 import { useGenre } from '../../context/GenreContext';
 import { melodicGenerator } from '@astradio/audio-mappings';
 import { buildSecureAPIUrl, clientRateLimiter } from '../../lib/security';
-import getToneAudioService from '../../lib/toneAudioService';
 
 export default function ChartPage() {
   const [chart, setChart] = useState<AstroChart | null>(null);
@@ -53,26 +52,36 @@ export default function ChartPage() {
     setWheelSize(calculateWheelSize());
 
     // Set up Tone.js audio service callbacks
-    const toneAudioService = getToneAudioService();
-    toneAudioService.onTimeUpdateCallback((time) => {
-      // Update audio status with current time
-      setAudioStatus(prev => ({
-        ...prev,
-        currentSession: prev.currentSession ? {
-          ...prev.currentSession,
-          currentTime: time
-        } : null
-      }));
-    });
+    const initializeAudio = async () => {
+      try {
+        const { default: getToneAudioService } = await import('../../lib/toneAudioService');
+        const toneAudioService = getToneAudioService();
+        
+        toneAudioService.onTimeUpdateCallback((time) => {
+          // Update audio status with current time
+          setAudioStatus(prev => ({
+            ...prev,
+            currentSession: prev.currentSession ? {
+              ...prev.currentSession,
+              currentTime: time
+            } : null
+          }));
+        });
 
-    toneAudioService.onErrorCallback((error) => {
-      setAudioError(error);
-      setAudioStatus(prev => ({ ...prev, isLoading: false, error }));
-    });
+        toneAudioService.onErrorCallback((error) => {
+          setAudioError(error);
+          setAudioStatus(prev => ({ ...prev, isLoading: false, error }));
+        });
 
-    return () => {
-      toneAudioService.stop();
+        return () => {
+          toneAudioService.stop();
+        };
+      } catch (error) {
+        console.error('Failed to initialize audio service:', error);
+      }
     };
+
+    initializeAudio();
   }, []);
 
   const handleFormSubmit = async (formData: FormData) => {

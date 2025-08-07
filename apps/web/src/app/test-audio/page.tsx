@@ -1,17 +1,24 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import getToneAudioService from '../../lib/toneAudioService';
 
 export default function TestAudioPage() {
   const [status, setStatus] = useState<string>('');
   const [logs, setLogs] = useState<string[]>([]);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const addLog = (message: string) => {
     setLogs(prev => [...prev, `${new Date().toLocaleTimeString()}: ${message}`]);
   };
 
   const testAudioContext = async () => {
+    if (!isClient) return;
+    
     try {
       addLog('Testing AudioContext...');
       const audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -30,6 +37,8 @@ export default function TestAudioPage() {
   };
 
   const testToneJS = async () => {
+    if (!isClient) return;
+    
     try {
       addLog('Testing Tone.js...');
       const toneService = getToneAudioService();
@@ -47,6 +56,8 @@ export default function TestAudioPage() {
   };
 
   const testAPI = async () => {
+    if (!isClient) return;
+    
     try {
       addLog('Testing API endpoint...');
       
@@ -82,6 +93,8 @@ export default function TestAudioPage() {
   };
 
   const testFullAudio = async () => {
+    if (!isClient) return;
+    
     try {
       addLog('Testing full audio pipeline...');
       

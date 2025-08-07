@@ -1,7 +1,6 @@
 // Unified Audio Controller for Astradio
 // Handles both API-generated WAV files and real-time Tone.js generation
 
-import audioService from './audioService';
 import getToneAudioService from './toneAudioService';
 
 export interface AudioPlaybackOptions {
@@ -31,26 +30,39 @@ class UnifiedAudioController {
     mode: null
   };
   private onStatusChange: ((status: AudioStatus) => void) | null = null;
+  private audioService: any = null;
 
   constructor() {
     // Only initialize on client side
     if (typeof window !== 'undefined') {
+      this.initializeServices();
+    }
+  }
+
+  private async initializeServices() {
+    try {
+      // Initialize audioService dynamically
+      const { default: audioService } = await import('./audioService');
+      this.audioService = audioService;
+      
       this.setupAudioServiceCallbacks();
       this.setupToneServiceCallbacks();
+    } catch (error) {
+      console.error('Failed to initialize audio services:', error);
     }
   }
 
   private setupAudioServiceCallbacks() {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || !this.audioService) return;
     
-    audioService.onTimeUpdateCallback((time: number) => {
+    this.audioService.onTimeUpdateCallback((time: number) => {
       this.updateStatus({
         currentTime: time,
-        isPlaying: audioService.getIsPlaying()
+        isPlaying: this.audioService.getIsPlaying()
       });
     });
 
-    audioService.onErrorCallback((error: string) => {
+    this.audioService.onErrorCallback((error: string) => {
       this.updateStatus({
         isLoading: false,
         isPlaying: false,
@@ -99,14 +111,14 @@ class UnifiedAudioController {
       console.log('🎵 Playing daily audio via API...');
       
       const apiUrl = `/api/audio/daily?genre=${genre}&duration=${duration}`;
-      const success = await audioService.loadAudioFromAPI(apiUrl);
+      const success = await this.audioService.loadAudioFromAPI(apiUrl);
       
       if (success) {
-        const playSuccess = await audioService.play();
+        const playSuccess = await this.audioService.play();
         this.updateStatus({
           isLoading: false,
           isPlaying: playSuccess,
-          duration: audioService.getDuration()
+          duration: this.audioService.getDuration()
         });
         return playSuccess;
       } else {
@@ -215,7 +227,7 @@ class UnifiedAudioController {
     console.log('⏹️ Stopping audio playback...');
     
     if (this.currentMode === 'api') {
-      audioService.stop();
+      this.audioService.stop();
     } else if (this.currentMode === 'realtime') {
       const toneService = getToneAudioService();
       toneService.stop();
@@ -232,7 +244,7 @@ class UnifiedAudioController {
     console.log('⏸️ Pausing audio playback...');
     
     if (this.currentMode === 'api') {
-      audioService.pause();
+      this.audioService.pause();
     } else if (this.currentMode === 'realtime') {
       const toneService = getToneAudioService();
       toneService.pause();
@@ -246,7 +258,7 @@ class UnifiedAudioController {
   // Set volume
   setVolume(volume: number): void {
     if (this.currentMode === 'api') {
-      audioService.setVolume(volume);
+      this.audioService.setVolume(volume);
     } else if (this.currentMode === 'realtime') {
       const toneService = getToneAudioService();
       toneService.setVolume(volume);
@@ -266,7 +278,9 @@ class UnifiedAudioController {
   // Cleanup
   destroy(): void {
     this.stop();
-    audioService.destroy();
+    if (this.audioService) {
+      this.audioService.destroy();
+    }
     const toneService = getToneAudioService();
     toneService.destroy();
   }

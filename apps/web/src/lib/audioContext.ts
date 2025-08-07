@@ -348,7 +348,14 @@ class AudioContextService {
   }
 }
 
-// Create singleton instance
-const audioContextService = new AudioContextService();
+// Create singleton instance with lazy initialization
+let audioContextServiceInstance: AudioContextService | null = null;
 
-export default audioContextService; 
+const getAudioContextService = (): AudioContextService => {
+  if (!audioContextServiceInstance) {
+    audioContextServiceInstance = new AudioContextService();
+  }
+  return audioContextServiceInstance;
+};
+
+export default getAudioContextService; 
