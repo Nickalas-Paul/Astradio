@@ -1,24 +1,23 @@
-'use client';
-
 import React, { useEffect } from 'react';
-import Navigation from '../../components/Navigation';
-import ChartDisplay from '../../components/ChartDisplay';
-import UnifiedAudioControls from '../../components/UnifiedAudioControls';
-import GenreDropdown from '../../components/GenreDropdown';
-import BirthDataForm from '../../components/BirthDataForm';
-import BlankChartWheel from '../../components/BlankChartWheel';
-import GeneratedTextDisplay from '../../components/GeneratedTextDisplay';
-import ChartLayoutWrapper from '../../components/ChartLayoutWrapper';
-import AudioLabModeSwitcher from '../../components/AudioLabModeSwitcher';
-import ChartMergeAnimation from '../../components/ChartMergeAnimation';
-import SandboxMode from '../../components/SandboxMode';
-import { FormData } from '../../types';
-import { useGenre } from '../../context/GenreContext';
-import { buildSecureAPIUrl, clientRateLimiter } from '../../lib/security';
-import getToneAudioService from '../../lib/toneAudioService';
-import { useAudioLabStore } from '../../stores/audioLabStore';
+import Navigation from './Navigation';
+import ChartDisplay from './ChartDisplay';
+import UnifiedAudioControls from './UnifiedAudioControls';
+import GenreDropdown from './GenreDropdown';
+import BirthDataForm from './BirthDataForm';
+import BlankChartWheel from './BlankChartWheel';
+import GeneratedTextDisplay from './GeneratedTextDisplay';
+import ChartLayoutWrapper from './ChartLayoutWrapper';
+import AudioLabModeSwitcher from './AudioLabModeSwitcher';
+import ChartMergeAnimation from './ChartMergeAnimation';
+import SandboxMode from './SandboxMode';
+import AudioTextGenerator from './AudioTextGenerator';
+import { FormData } from '../types';
+import { useGenre } from '../context/GenreContext';
+import { buildSecureAPIUrl, clientRateLimiter } from '../lib/security';
+import getToneAudioService from '../lib/toneAudioService';
+import { useAudioLabStore } from '../stores/audioLabStore';
 
-export default function AudioLabPage() {
+export default function InlineAudioLab() {
   const { selectedGenre, getRandomGenre } = useGenre();
   const {
     viewMode,
@@ -40,15 +39,21 @@ export default function AudioLabPage() {
     showInterpretation,
     setShowInterpretation,
     sandboxPlanets,
-    setSandboxPlanets
+    setSandboxPlanets,
+    dailyChart,
+    setDailyChart,
+    activateLabMode,
+    resetToDaily
   } = useAudioLabStore();
 
   const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
   // Load daily chart on component mount
   useEffect(() => {
-    loadDailyChart();
-  }, []);
+    if (viewMode === 'daily') {
+      loadDailyChart();
+    }
+  }, [viewMode]);
 
   // Set up Tone.js audio service callbacks
   useEffect(() => {
@@ -68,8 +73,30 @@ export default function AudioLabPage() {
       setAudioStatus((prev: any) => ({ ...prev, isLoading: false, error }));
     });
 
+    // Handle user interaction to enable audio
+    const handleUserInteraction = async () => {
+      try {
+        // Try to resume audio context on first user interaction
+        if (typeof window !== 'undefined' && window.Tone) {
+          await window.Tone.context.resume();
+          console.log('🎵 Audio context resumed on user interaction');
+        }
+      } catch (error) {
+        console.error('❌ Failed to resume audio context:', error);
+      }
+    };
+
+    // Add event listeners for user interaction
+    const events = ['click', 'touchstart', 'keydown'];
+    events.forEach(event => {
+      document.addEventListener(event, handleUserInteraction, { once: true });
+    });
+
     return () => {
       toneAudioService.stop();
+      events.forEach(event => {
+        document.removeEventListener(event, handleUserInteraction);
+      });
     };
   }, [setAudioStatus]);
 
@@ -97,6 +124,7 @@ export default function AudioLabPage() {
       const data = await response.json();
       
       if (data.success) {
+        setDailyChart(data.data.chart);
         setCharts((prev: any) => ({
           ...prev,
           chart2: data.data.chart
@@ -272,6 +300,74 @@ export default function AudioLabPage() {
 
   const canGenerateOverlay = charts.chart1 && charts.chart2;
 
+  // Daily View
+  if (viewMode === 'daily') {
+    return (
+      <ChartLayoutWrapper
+        title="Astradio"
+        subtitle="Your daily cosmic soundtrack"
+        genre={selectedGenre || 'ambient'}
+        showGenre={true}
+      >
+        <Navigation />
+        
+        <div className="container mx-auto px-6 py-12">
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-bold text-white mb-4 font-sans">
+              Your Daily Cosmic Soundtrack
+            </h1>
+            <p className="text-lg text-slate-300 mb-8 font-light">
+              Experience today's astrological energy through music
+            </p>
+          </div>
+
+          {/* Daily Chart Display */}
+          {dailyChart ? (
+            <div className="bg-slate-900/50 backdrop-blur-md rounded-2xl p-8 border border-emerald-500/20 max-w-4xl mx-auto mb-8 shadow-lg">
+              <ChartDisplay chart={dailyChart} />
+            </div>
+          ) : (
+            <div className="bg-slate-900/50 backdrop-blur-md rounded-2xl p-8 border border-emerald-500/20 max-w-4xl mx-auto mb-8 shadow-lg">
+              <div className="text-center">
+                <BlankChartWheel 
+                  size={400}
+                  message="Loading today's cosmic energy..."
+                  showGrid={true}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* CTA Button */}
+          <div className="text-center mb-8">
+            <button
+              onClick={activateLabMode}
+              className="px-8 py-4 bg-emerald-600 hover:bg-emerald-700 rounded-xl text-white font-semibold transition-colors text-lg shadow-lg"
+            >
+              Discover What Your Chart Sounds Like
+            </button>
+          </div>
+
+          {/* Genre Selection */}
+          <div className="mb-8 w-full max-w-md mx-auto">
+            <GenreDropdown
+              selectedGenre={selectedGenre || 'ambient'}
+              onGenreChange={handleGenreChange}
+              disabled={isLoading}
+            />
+          </div>
+
+          {error && (
+            <div className="mt-6 p-6 bg-red-500/20 border border-red-500/30 rounded-xl max-w-4xl mx-auto">
+              <p className="text-red-300 font-sans text-center">{error}</p>
+            </div>
+          )}
+        </div>
+      </ChartLayoutWrapper>
+    );
+  }
+
+  // Lab View
   return (
     <ChartLayoutWrapper
       title="Audio Lab"
@@ -282,6 +378,16 @@ export default function AudioLabPage() {
       <Navigation />
       
       <div className="container mx-auto px-6 py-12">
+        {/* Back to Daily Button */}
+        <div className="flex justify-between items-center mb-8">
+          <button
+            onClick={resetToDaily}
+            className="px-4 py-2 bg-slate-600 hover:bg-slate-700 rounded-lg text-white font-medium transition-colors shadow-md"
+          >
+            ← Back to Daily Chart
+          </button>
+        </div>
+
         {/* Mode Switcher */}
         <AudioLabModeSwitcher
           currentMode={activeLabMode as any}
@@ -297,6 +403,14 @@ export default function AudioLabPage() {
             disabled={isLoading}
           />
         </div>
+
+        {/* Audio Text Generator - Always visible in lab mode */}
+        <AudioTextGenerator
+          mode={activeLabMode as any}
+          chartA={charts.chart1}
+          chartB={charts.chart2}
+          isVisible={viewMode === 'lab'}
+        />
 
         {/* Generate Mode */}
         {activeLabMode === 'natal' && (

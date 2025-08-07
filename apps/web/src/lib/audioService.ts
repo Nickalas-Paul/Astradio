@@ -303,6 +303,56 @@ class AudioService {
     this.onError = callback;
   }
 
+  // Load and play audio from API URL
+  async loadAudioFromAPI(apiUrl: string): Promise<boolean> {
+    try {
+      console.log('🎵 Loading audio from API URL:', apiUrl);
+      
+      // First, get the audio URL from the API
+      const response = await fetch(apiUrl);
+      console.log('🎵 API response status:', response.status);
+      
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('🎵 API data received:', data);
+      
+      if (!data.success || !data.data.audio_url) {
+        throw new Error('No audio URL in API response');
+      }
+      
+      // Now fetch the actual audio file
+      const audioUrl = `${window.location.origin}${data.data.audio_url}`;
+      console.log('🎵 Fetching audio file from:', audioUrl);
+      
+      const audioResponse = await fetch(audioUrl);
+      console.log('🎵 Audio file response status:', audioResponse.status);
+      
+      if (!audioResponse.ok) {
+        throw new Error(`Audio file fetch failed: ${audioResponse.status}`);
+      }
+      
+      const arrayBuffer = await audioResponse.arrayBuffer();
+      console.log('🎵 Audio file received, size:', arrayBuffer.byteLength, 'bytes');
+      
+      // Load the audio buffer
+      const success = await this.loadAudioFromBuffer(arrayBuffer);
+      
+      if (success) {
+        console.log('🎵 Audio loaded successfully from API');
+        return true;
+      } else {
+        throw new Error('Failed to load audio buffer');
+      }
+    } catch (error) {
+      console.error('❌ Failed to load audio from API:', error);
+      this.handleError(`Failed to load audio from API: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      return false;
+    }
+  }
+
   // Getters
   getIsPlaying(): boolean {
     return this.isPlaying;

@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Audio Debug Test</title>
+    <script src="https://unpkg.com/tone@14.7.77/build/Tone.js"></script>
+</head>
+<body>
+    <h1>Audio Debug Test</h1>
+    
+    <div style="margin: 20px 0;">
+        <h2>1. Basic AudioContext Test</h2>
+        <button onclick="testAudioContext()">Test AudioContext</button>
+        <div id="audioContextResult"></div>
+    </div>
+    
+    <div style="margin: 20px 0;">
+        <h2>2. Tone.js Test</h2>
+        <button onclick="testToneJS()">Test Tone.js</button>
+        <div id="toneResult"></div>
+    </div>
+    
+    <div style="margin: 20px 0;">
+        <h2>3. Audio File Test</h2>
+        <button onclick="testAudioFile()">Test Audio File</button>
+        <div id="audioFileResult"></div>
+        <audio id="testAudio" controls style="margin-top: 10px;"></audio>
+    </div>
+    
+    <div style="margin: 20px 0;">
+        <h2>4. User Interaction Test</h2>
+        <button onclick="testUserInteraction()">Test User Interaction</button>
+        <div id="interactionResult"></div>
+    </div>
+
+    <script>
+        // Test 1: Basic AudioContext
+        async function testAudioContext() {
+            const result = document.getElementById('audioContextResult');
+            result.innerHTML = '<p>Testing...</p>';
+            
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                console.log('AudioContext state:', audioContext.state);
+                
+                if (audioContext.state === 'suspended') {
+                    await audioContext.resume();
+                    console.log('AudioContext resumed');
+                }
+                
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.setValueAtTime(440, audioContext.currentTime);
+                gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+                
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 0.5);
+                
+                result.innerHTML = '<p style="color: green;">✅ AudioContext test completed - did you hear a 440Hz beep?</p>';
+            } catch (error) {
+                console.error('AudioContext test failed:', error);
+                result.innerHTML = '<p style="color: red;">❌ AudioContext test failed: ' + error.message + '</p>';
+            }
+        }
+        
+        // Test 2: Tone.js
+        async function testToneJS() {
+            const result = document.getElementById('toneResult');
+            result.innerHTML = '<p>Testing...</p>';
+            
+            try {
+                await Tone.start();
+                console.log('Tone.js started');
+                
+                const synth = new Tone.Synth().toDestination();
+                synth.triggerAttackRelease("C4", "8n");
+                
+                result.innerHTML = '<p style="color: green;">✅ Tone.js test completed - did you hear a C4 note?</p>';
+            } catch (error) {
+                console.error('Tone.js test failed:', error);
+                result.innerHTML = '<p style="color: red;">❌ Tone.js test failed: ' + error.message + '</p>';
+            }
+        }
+        
+        // Test 3: Audio File
+        async function testAudioFile() {
+            const result = document.getElementById('audioFileResult');
+            const audio = document.getElementById('testAudio');
+            result.innerHTML = '<p>Testing...</p>';
+            
+            try {
+                // Test with a generated audio file from your API
+                audio.src = 'http://localhost:3001/audio/daily-2025-08-07-ambient-30s.wav';
+                
+                audio.onloadstart = () => {
+                    result.innerHTML = '<p>Loading audio file...</p>';
+                };
+                
+                audio.oncanplay = () => {
+                    result.innerHTML = '<p style="color: green;">✅ Audio file loaded successfully - click play to test</p>';
+                };
+                
+                audio.onerror = (e) => {
+                    result.innerHTML = '<p style="color: red;">❌ Audio file failed to load: ' + e.message + '</p>';
+                };
+                
+            } catch (error) {
+                console.error('Audio file test failed:', error);
+                result.innerHTML = '<p style="color: red;">❌ Audio file test failed: ' + error.message + '</p>';
+            }
+        }
+        
+        // Test 4: User Interaction
+        async function testUserInteraction() {
+            const result = document.getElementById('interactionResult');
+            result.innerHTML = '<p>Testing...</p>';
+            
+            try {
+                // This should work because user clicked the button
+                await Tone.start();
+                console.log('Tone.js started via user interaction');
+                
+                const synth = new Tone.Synth().toDestination();
+                synth.triggerAttackRelease("G4", "4n");
+                
+                result.innerHTML = '<p style="color: green;">✅ User interaction test completed - did you hear a G4 note?</p>';
+            } catch (error) {
+                console.error('User interaction test failed:', error);
+                result.innerHTML = '<p style="color: red;">❌ User interaction test failed: ' + error.message + '</p>';
+            }
+        }
+        
+        // Log initial state
+        console.log('Page loaded');
+        console.log('Tone.js available:', typeof Tone !== 'undefined');
+        if (typeof Tone !== 'undefined') {
+            console.log('Tone.js context state:', Tone.context.state);
+        }
+    </script>
+</body>
+</html> 

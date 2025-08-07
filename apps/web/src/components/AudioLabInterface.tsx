@@ -648,14 +648,14 @@ export default function AudioLabInterface({ onStateChange, state }: AudioLabInte
               });
             }}
             onStop={() => {
-              toneAudioService.stop();
+              toneAudioService().stop();
               onStateChange({
                 ...state,
                 audioStatus: { ...state.audioStatus, isPlaying: false }
               });
             }}
             onPause={() => {
-              toneAudioService.pause();
+              toneAudioService().pause();
               onStateChange({
                 ...state,
                 audioStatus: { ...state.audioStatus, isPlaying: false }

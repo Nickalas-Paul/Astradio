@@ -1,20 +1,22 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import BirthDataForm from '../../components/BirthDataForm';
+import React, { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import Navigation from '../../components/Navigation';
 import ChartDisplay from '../../components/ChartDisplay';
 import UnifiedAudioControls from '../../components/UnifiedAudioControls';
-import Navigation from '../../components/Navigation';
+import GenreDropdown from '../../components/GenreDropdown';
+import BirthDataForm from '../../components/BirthDataForm';
 import OverlayVisualizer from '../../components/OverlayVisualizer';
 import BlankChartWheel from '../../components/BlankChartWheel';
 import GeneratedTextDisplay from '../../components/GeneratedTextDisplay';
 import DualChartMerge from '../../components/DualChartMerge';
 import ChartLayoutWrapper from '../../components/ChartLayoutWrapper';
-import GenreDropdown from '../../components/GenreDropdown';
-import { FormData, AstroChart, AudioStatus } from '../../types';
-import { buildSecureAPIUrl, clientRateLimiter } from '../../lib/security';
+import { AstroChart, AudioStatus, FormData } from '../../types';
 import { useGenre } from '../../context/GenreContext';
-import toneAudioService from '../../lib/toneAudioService';
+import { melodicGenerator } from '@astradio/audio-mappings';
+import { buildSecureAPIUrl, clientRateLimiter } from '../../lib/security';
+import getToneAudioService from '../../lib/toneAudioService';
 
 interface DualChartData {
   chart1: AstroChart | null;
@@ -50,7 +52,9 @@ export default function OverlayPage() {
 
   // Set up Tone.js audio service callbacks
   useEffect(() => {
-    toneAudioService.onTimeUpdateCallback((time) => {
+    const toneAudioService = getToneAudioService();
+    
+    toneAudioService.onTimeUpdateCallback((time: number) => {
       setAudioStatus(prev => ({
         ...prev,
         currentSession: prev.currentSession ? {
@@ -60,7 +64,7 @@ export default function OverlayPage() {
       }));
     });
 
-    toneAudioService.onErrorCallback((error) => {
+    toneAudioService.onErrorCallback((error: string) => {
       setAudioStatus(prev => ({ ...prev, isLoading: false, error }));
     });
 
@@ -104,7 +108,7 @@ export default function OverlayPage() {
     }
   };
 
-  const handleFormSubmit = async (formData: FormData, chartNumber: 1 | 2) => {
+  const handleFormSubmit = async (formData: any, chartNumber: 1 | 2) => {
     setIsLoading(true);
     setError(null);
 
@@ -187,6 +191,7 @@ export default function OverlayPage() {
       };
 
       // Generate note events for the overlay with enhanced processing
+      const toneAudioService = getToneAudioService();
       const noteEvents = toneAudioService.generateNoteEvents(mergedChartData, genre);
       
       if (noteEvents.length === 0) {
@@ -403,11 +408,13 @@ export default function OverlayPage() {
   };
 
   const handleStop = () => {
+    const toneAudioService = getToneAudioService();
     toneAudioService.stop();
     setAudioStatus(prev => ({ ...prev, isPlaying: false }));
   };
 
   const handlePause = () => {
+    const toneAudioService = getToneAudioService();
     toneAudioService.pause();
     setAudioStatus(prev => ({ ...prev, isPlaying: false }));
   };

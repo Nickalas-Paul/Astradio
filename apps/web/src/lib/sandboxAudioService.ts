@@ -16,6 +16,9 @@ export interface SandboxAudioSession {
   createdAt: Date;
 }
 
+// Check if we're in a browser environment
+const isBrowser = typeof window !== 'undefined';
+
 export class SandboxAudioService {
   private currentSession: SandboxAudioSession | null = null;
   private audioContext: AudioContext | null = null;
@@ -24,11 +27,19 @@ export class SandboxAudioService {
   private sourceNode: AudioBufferSourceNode | null = null;
 
   constructor() {
-    this.initializeAudioContext();
+    // Only initialize audio context in browser environment
+    if (isBrowser) {
+      this.initializeAudioContext();
+    }
   }
 
   private async initializeAudioContext() {
     try {
+      if (!isBrowser) {
+        console.log('🎵 Skipping audio context initialization (SSR)');
+        return;
+      }
+      
       this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
     } catch (error) {
       console.error('Failed to initialize audio context:', error);

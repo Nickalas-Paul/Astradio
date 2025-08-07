@@ -13,7 +13,7 @@ import GenreDropdown from '../../components/GenreDropdown';
 import { AstroChart, AudioStatus, AspectData } from '../../types';
 import { useGenre } from '../../context/GenreContext';
 import { sandboxInterpretationService, PlanetPlacement, PlacementInterpretation } from '../../lib/sandboxInterpretationService';
-import toneAudioService from '../../lib/toneAudioService';
+import getToneAudioService from '../../lib/toneAudioService';
 
 export default function SandboxPage() {
   const [chart, setChart] = useState<AstroChart | null>(null);
@@ -49,6 +49,8 @@ export default function SandboxPage() {
 
   // Set up Tone.js audio service callbacks
   useEffect(() => {
+    const toneAudioService = getToneAudioService();
+    
     toneAudioService.onTimeUpdateCallback((time) => {
       setAudioStatus(prev => ({
         ...prev,
@@ -71,6 +73,7 @@ export default function SandboxPage() {
   // Monitor audio service status
   useEffect(() => {
     const checkAudioStatus = () => {
+      const toneAudioService = getToneAudioService();
       setIsAudioPlaying(toneAudioService.getIsPlaying());
     };
 
@@ -144,6 +147,7 @@ export default function SandboxPage() {
 
     try {
       // Stop any existing audio
+      const toneAudioService = getToneAudioService();
       toneAudioService.stop();
 
       // Generate note events for the sandbox chart with enhanced processing
@@ -319,6 +323,7 @@ export default function SandboxPage() {
     setDetectedAspects([]);
     setPlacementInterpretations([]);
     setCurrentPlacement(null);
+    const toneAudioService = getToneAudioService();
     toneAudioService.stop();
     setIsAudioPlaying(false);
   };
@@ -333,11 +338,13 @@ export default function SandboxPage() {
   };
 
   const handleStop = () => {
+    const toneAudioService = getToneAudioService();
     toneAudioService.stop();
     setAudioStatus(prev => ({ ...prev, isPlaying: false }));
   };
 
   const handlePause = () => {
+    const toneAudioService = getToneAudioService();
     toneAudioService.pause();
     setAudioStatus(prev => ({ ...prev, isPlaying: false }));
   };

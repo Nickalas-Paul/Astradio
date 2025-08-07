@@ -1,121 +1,157 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import toneAudioService from '../../lib/toneAudioService';
+import React, { useState } from 'react';
+import getToneAudioService from '../../lib/toneAudioService';
 
 export default function TestAudioPage() {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [volume, setVolume] = useState(0.7);
-  const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<string>('');
+  const [logs, setLogs] = useState<string[]>([]);
 
-  // Sample chart data for testing
-  const sampleChart = {
-    planets: {
-      Sun: { longitude: 45, house: 1, sign: { name: 'Taurus' } },
-      Moon: { longitude: 120, house: 4, sign: { name: 'Leo' } },
-      Mercury: { longitude: 60, house: 2, sign: { name: 'Gemini' } },
-      Venus: { longitude: 90, house: 3, sign: { name: 'Cancer' } },
-      Mars: { longitude: 150, house: 5, sign: { name: 'Virgo' } }
-    },
-    aspects: [
-      { type: 'conjunction', planet1: 'Sun', planet2: 'Mercury', orb: 5 },
-      { type: 'trine', planet1: 'Moon', planet2: 'Venus', orb: 3 }
-    ]
+  const addLog = (message: string) => {
+    setLogs(prev => [...prev, `${new Date().toLocaleTimeString()}: ${message}`]);
   };
 
-  const handlePlay = async () => {
+  const testAudioContext = async () => {
     try {
-      setIsPlaying(true);
-      setError(null);
+      addLog('Testing AudioContext...');
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      addLog(`AudioContext state: ${audioContext.state}`);
       
-      console.log('🎵 Starting audio test...');
-      const events = toneAudioService.generateNoteEvents(sampleChart, 'ambient');
-      console.log('🎵 Generated events:', events.length);
-      
-      const success = await toneAudioService.playNoteEvents(events);
-      console.log('🎵 Playback success:', success);
-      
-      if (!success) {
-        setError('Failed to start audio playback');
-        setIsPlaying(false);
+      if (audioContext.state === 'suspended') {
+        await audioContext.resume();
+        addLog('AudioContext resumed successfully');
       }
+      
+      setStatus('✅ AudioContext working');
     } catch (error) {
-      console.error('❌ Audio test failed:', error);
-      setError('Audio test failed');
-      setIsPlaying(false);
+      addLog(`❌ AudioContext error: ${error}`);
+      setStatus('❌ AudioContext failed');
     }
   };
 
-  const handleStop = () => {
-    toneAudioService.stop();
-    setIsPlaying(false);
+  const testToneJS = async () => {
+    try {
+      addLog('Testing Tone.js...');
+      const toneService = getToneAudioService();
+      
+      // Test with a simple note
+      const synth = new (window as any).Tone.Synth().toDestination();
+      synth.triggerAttackRelease("C4", "4n");
+      
+      addLog('Tone.js synth played C4 note');
+      setStatus('✅ Tone.js working');
+    } catch (error) {
+      addLog(`❌ Tone.js error: ${error}`);
+      setStatus('❌ Tone.js failed');
+    }
   };
 
-  const handleVolumeChange = (newVolume: number) => {
-    setVolume(newVolume);
-    toneAudioService.setVolume(newVolume);
+  const testAPI = async () => {
+    try {
+      addLog('Testing API endpoint...');
+      
+      const response = await fetch('http://localhost:3001/api/audio/sequential', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          chart_data: {
+            metadata: {
+              birth_datetime: '1990-01-01T12:00:00Z'
+            },
+            planets: {}
+          },
+          mode: 'moments'
+        }),
+      });
+      
+      addLog(`API response status: ${response.status}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        addLog(`API response: ${JSON.stringify(data).substring(0, 100)}...`);
+        setStatus('✅ API working');
+      } else {
+        throw new Error(`API returned ${response.status}`);
+      }
+    } catch (error) {
+      addLog(`❌ API error: ${error}`);
+      setStatus('❌ API failed');
+    }
+  };
+
+  const testFullAudio = async () => {
+    try {
+      addLog('Testing full audio pipeline...');
+      
+      // 1. Test AudioContext
+      await testAudioContext();
+      
+      // 2. Test Tone.js
+      await testToneJS();
+      
+      // 3. Test API
+      await testAPI();
+      
+      setStatus('✅ Full audio pipeline working!');
+    } catch (error) {
+      addLog(`❌ Full audio error: ${error}`);
+      setStatus('❌ Full audio failed');
+    }
   };
 
   return (
-    <div className="min-h-screen bg-black text-white p-8">
-      <div className="max-w-2xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8">Audio Test Page</h1>
+    <div className="min-h-screen bg-gray-900 text-white p-8">
+      <div className="max-w-4xl mx-auto">
+        <h1 className="text-3xl font-bold mb-8">🎵 Audio Test Page</h1>
         
-        <div className="bg-gray-800 p-6 rounded-lg mb-6">
-          <h2 className="text-xl mb-4">Audio Controls</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <button
+            onClick={testAudioContext}
+            className="p-4 bg-blue-600 hover:bg-blue-700 rounded-lg"
+          >
+            Test AudioContext
+          </button>
           
-          <div className="space-y-4">
-            <div className="flex gap-4">
-              <button
-                onClick={handlePlay}
-                disabled={isPlaying}
-                className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 rounded"
-              >
-                ▶️ Play Test Audio
-              </button>
-              
-              <button
-                onClick={handleStop}
-                disabled={!isPlaying}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 rounded"
-              >
-                ⏹️ Stop
-              </button>
-            </div>
-            
-            <div className="flex items-center gap-4">
-              <span>🔊 Volume:</span>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.1"
-                value={volume}
-                onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
-                className="flex-1"
-              />
-              <span>{Math.round(volume * 100)}%</span>
-            </div>
-            
-            {error && (
-              <div className="text-red-400">
-                ❌ Error: {error}
-              </div>
-            )}
-            
-            {isPlaying && (
-              <div className="text-green-400">
-                ✅ Playing audio...
-              </div>
-            )}
+          <button
+            onClick={testToneJS}
+            className="p-4 bg-green-600 hover:bg-green-700 rounded-lg"
+          >
+            Test Tone.js
+          </button>
+          
+          <button
+            onClick={testAPI}
+            className="p-4 bg-purple-600 hover:bg-purple-700 rounded-lg"
+          >
+            Test API
+          </button>
+          
+          <button
+            onClick={testFullAudio}
+            className="p-4 bg-orange-600 hover:bg-orange-700 rounded-lg"
+          >
+            Test Full Pipeline
+          </button>
+        </div>
+        
+        <div className="mb-6">
+          <h2 className="text-xl font-semibold mb-2">Status</h2>
+          <div className="p-4 bg-gray-800 rounded-lg">
+            {status || 'Click a test button to start...'}
           </div>
         </div>
         
-        <div className="bg-gray-800 p-6 rounded-lg">
-          <h2 className="text-xl mb-4">Test Chart Data</h2>
-          <pre className="text-sm overflow-auto">
-            {JSON.stringify(sampleChart, null, 2)}
-          </pre>
+        <div>
+          <h2 className="text-xl font-semibold mb-2">Logs</h2>
+          <div className="p-4 bg-gray-800 rounded-lg h-64 overflow-y-auto font-mono text-sm">
+            {logs.map((log, index) => (
+              <div key={index} className="mb-1">
+                {log}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>

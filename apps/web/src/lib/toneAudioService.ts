@@ -58,6 +58,13 @@ class ToneAudioService {
         return;
       }
 
+      // Check if user has interacted with the page
+      if (Tone.context.state === 'suspended') {
+        console.log('🎵 Audio context suspended - waiting for user interaction');
+        this.handleError('Audio context suspended. Please click anywhere on the page to enable audio.');
+        return;
+      }
+
       // Initialize Tone.js
       await Tone.start();
       console.log('🎵 Tone.js initialized successfully');
@@ -261,6 +268,19 @@ class ToneAudioService {
   // Play note events using Tone.js
   async playNoteEvents(events: NoteEvent[]): Promise<boolean> {
     try {
+      // Check if audio context is suspended (autoplay restriction)
+      if (Tone.context.state === 'suspended') {
+        console.log('🎵 Audio context suspended - attempting to resume...');
+        try {
+          await Tone.context.resume();
+          console.log('🎵 Audio context resumed successfully');
+        } catch (resumeError) {
+          console.error('❌ Failed to resume audio context:', resumeError);
+          this.handleError('Audio context suspended. Please click anywhere on the page to enable audio playback.');
+          return false;
+        }
+      }
+
       if (!this.isInitialized) {
         await this.initializeTone();
         if (!this.isInitialized) {
@@ -397,7 +417,14 @@ class ToneAudioService {
   }
 }
 
-// Create singleton instance
-const toneAudioService = new ToneAudioService();
+// Create singleton instance with lazy initialization
+let toneAudioServiceInstance: ToneAudioService | null = null;
 
-export default toneAudioService; 
+const getToneAudioService = (): ToneAudioService => {
+  if (!toneAudioServiceInstance) {
+    toneAudioServiceInstance = new ToneAudioService();
+  }
+  return toneAudioServiceInstance;
+};
+
+export default getToneAudioService; 

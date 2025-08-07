@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Audio Fix Test - Direct</title>
+    <script src="https://unpkg.com/tone@14.7.77/build/Tone.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+        button { padding: 10px 15px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .log { background: #f8f9fa; padding: 10px; margin: 10px 0; border-radius: 3px; font-family: monospace; }
+    </style>
+</head>
+<body>
+    <h1>🎵 Audio Fix Test - Direct</h1>
+    
+    <div class="test-section">
+        <h2>1. AudioContext State Check</h2>
+        <button onclick="checkAudioContext()">Check AudioContext State</button>
+        <div id="audioContextResult"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. Tone.js Initialization Test</h2>
+        <button onclick="testToneInit()">Test Tone.js Init</button>
+        <div id="toneInitResult"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. User Interaction Test (Critical)</h2>
+        <button onclick="testUserInteraction()">Test User Interaction</button>
+        <div id="interactionResult"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>4. Audio Playback Test</h2>
+        <button onclick="testAudioPlayback()">Test Audio Playback</button>
+        <div id="playbackResult"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>5. API Audio Test</h2>
+        <button onclick="testAPIAudio()">Test API Audio</button>
+        <div id="apiResult"></div>
+        <audio id="apiAudio" controls style="margin-top: 10px; width: 100%;"></audio>
+    </div>
+    
+    <div class="test-section">
+        <h2>Console Log</h2>
+        <div id="consoleLog" class="log"></div>
+        <button onclick="clearLog()">Clear Log</button>
+    </div>
+
+    <script>
+        // Custom console logging
+        const originalLog = console.log;
+        const originalError = console.error;
+        const logDiv = document.getElementById('consoleLog');
+        
+        function addToLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.innerHTML = `<span class="${type}">[${timestamp}] ${message}</span>`;
+            logDiv.appendChild(logEntry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            addToLog(args.join(' '), 'info');
+        };
+        
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            addToLog(args.join(' '), 'error');
+        };
+        
+        function clearLog() {
+            logDiv.innerHTML = '';
+        }
+        
+        // Test 1: AudioContext State
+        async function checkAudioContext() {
+            const result = document.getElementById('audioContextResult');
+            result.innerHTML = '<p>Checking...</p>';
+            
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                console.log('AudioContext state:', audioContext.state);
+                
+                let status = `State: ${audioContext.state}`;
+                if (audioContext.state === 'suspended') {
+                    status += ' (⚠️ Suspended - needs user interaction)';
+                } else if (audioContext.state === 'running') {
+                    status += ' (✅ Running)';
+                }
+                
+                result.innerHTML = `<p class="success">✅ ${status}</p>`;
+            } catch (error) {
+                console.error('AudioContext check failed:', error);
+                result.innerHTML = `<p class="error">❌ ${error.message}</p>`;
+            }
+        }
+        
+        // Test 2: Tone.js Initialization
+        async function testToneInit() {
+            const result = document.getElementById('toneInitResult');
+            result.innerHTML = '<p>Testing...</p>';
+            
+            try {
+                console.log('Tone.js context state:', Tone.context.state);
+                
+                if (Tone.context.state === 'suspended') {
+                    result.innerHTML = '<p class="info">ℹ️ Tone.js context suspended - waiting for user interaction</p>';
+                } else {
+                    await Tone.start();
+                    console.log('Tone.js started successfully');
+                    result.innerHTML = '<p class="success">✅ Tone.js initialized</p>';
+                }
+            } catch (error) {
+                console.error('Tone.js init failed:', error);
+                result.innerHTML = `<p class="error">❌ ${error.message}</p>`;
+            }
+        }
+        
+        // Test 3: User Interaction (Critical)
+        async function testUserInteraction() {
+            const result = document.getElementById('interactionResult');
+            result.innerHTML = '<p>Testing...</p>';
+            
+            try {
+                // This should work because user clicked the button
+                await Tone.start();
+                console.log('🎵 Tone.js started via user interaction');
+                
+                const synth = new Tone.Synth().toDestination();
+                synth.triggerAttackRelease("C4", "4n");
+                
+                result.innerHTML = '<p class="success">✅ User interaction test passed - did you hear a C4 note?</p>';
+            } catch (error) {
+                console.error('User interaction test failed:', error);
+                result.innerHTML = `<p class="error">❌ ${error.message}</p>`;
+            }
+        }
+        
+        // Test 4: Audio Playback
+        async function testAudioPlayback() {
+            const result = document.getElementById('playbackResult');
+            result.innerHTML = '<p>Testing...</p>';
+            
+            try {
+                // Check if context is suspended
+                if (Tone.context.state === 'suspended') {
+                    console.log('🎵 Audio context suspended - attempting to resume...');
+                    await Tone.context.resume();
+                    console.log('🎵 Audio context resumed successfully');
+                }
+                
+                const synth = new Tone.Synth().toDestination();
+                synth.triggerAttackRelease("G4", "2n");
+                
+                result.innerHTML = '<p class="success">✅ Audio playback test passed - did you hear a G4 note?</p>';
+            } catch (error) {
+                console.error('Audio playback test failed:', error);
+                result.innerHTML = `<p class="error">❌ ${error.message}</p>`;
+            }
+        }
+        
+        // Test 5: API Audio
+        async function testAPIAudio() {
+            const result = document.getElementById('apiResult');
+            const audio = document.getElementById('apiAudio');
+            result.innerHTML = '<p>Testing...</p>';
+            
+            try {
+                // Test with the API endpoint
+                const response = await fetch('http://localhost:3001/api/audio/daily');
+                console.log('API response status:', response.status);
+                
+                if (response.ok) {
+                    const audioData = await response.json();
+                    console.log('Audio data received:', audioData);
+                    
+                    if (audioData.success && audioData.data.audio_url) {
+                        // Now fetch the actual audio file
+                        const audioUrl = `http://localhost:3001${audioData.data.audio_url}`;
+                        console.log('Fetching audio file from:', audioUrl);
+                        
+                        const audioResponse = await fetch(audioUrl);
+                        console.log('Audio file response status:', audioResponse.status);
+                        
+                        if (audioResponse.ok) {
+                            const audioBlob = await audioResponse.blob();
+                            console.log('Audio blob received, size:', audioBlob.size, 'bytes');
+                            
+                            // Create object URL for the audio element
+                            const audioObjectUrl = URL.createObjectURL(audioBlob);
+                            audio.src = audioObjectUrl;
+                            
+                            // Test if audio can be played
+                            audio.onloadeddata = () => {
+                                console.log('Audio loaded successfully, duration:', audio.duration);
+                                result.innerHTML = '<p class="success">✅ API audio working! Audio file loaded and ready to play.</p>';
+                            };
+                            
+                            audio.onerror = (e) => {
+                                console.error('Audio loading error:', e);
+                                result.innerHTML = '<p class="error">❌ Audio file failed to load</p>';
+                            };
+                            
+                            // Try to play the audio
+                            try {
+                                await audio.play();
+                                result.innerHTML = '<p class="success">✅ API audio working! Audio is playing.</p>';
+                            } catch (playError) {
+                                console.warn('Auto-play blocked, but audio is loaded:', playError);
+                                result.innerHTML = '<p class="success">✅ API audio working! Audio loaded (click play button to hear it).</p>';
+                            }
+                        } else {
+                            throw new Error(`Audio file fetch failed: ${audioResponse.status}`);
+                        }
+                    } else {
+                        throw new Error('No audio_url in API response');
+                    }
+                } else {
+                    throw new Error(`API returned ${response.status}`);
+                }
+            } catch (error) {
+                console.error('API audio test failed:', error);
+                result.innerHTML = `<p class="error">❌ ${error.message}</p>`;
+            }
+        }
+        
+        // Initialize
+        console.log('🎵 Audio Fix Test Page Loaded');
+        console.log('Tone.js available:', typeof Tone !== 'undefined');
+        if (typeof Tone !== 'undefined') {
+            console.log('Tone.js context state:', Tone.context.state);
+        }
+    </script>
+</body>
+</html> 

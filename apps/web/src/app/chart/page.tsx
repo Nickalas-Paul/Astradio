@@ -1,18 +1,21 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import BirthDataForm from '../../components/BirthDataForm';
+import { useRouter } from 'next/navigation';
+import Navigation from '../../components/Navigation';
 import ChartDisplay from '../../components/ChartDisplay';
 import UnifiedAudioControls from '../../components/UnifiedAudioControls';
-import Navigation from '../../components/Navigation';
-import UnifiedAstrologicalWheel from '../../components/UnifiedAstrologicalWheel';
+import BirthDataForm from '../../components/BirthDataForm';
 import BlankChartWheel from '../../components/BlankChartWheel';
 import GeneratedTextDisplay from '../../components/GeneratedTextDisplay';
 import ChartLayoutWrapper from '../../components/ChartLayoutWrapper';
 import GenreDropdown from '../../components/GenreDropdown';
-import { FormData, AstroChart, AudioStatus } from '../../types';
+import AstrologicalWheel from '../../components/AstrologicalWheel';
+import { AstroChart, AudioStatus, FormData } from '../../types';
 import { useGenre } from '../../context/GenreContext';
-import toneAudioService from '../../lib/toneAudioService';
+import { melodicGenerator } from '@astradio/audio-mappings';
+import { buildSecureAPIUrl, clientRateLimiter } from '../../lib/security';
+import getToneAudioService from '../../lib/toneAudioService';
 
 export default function ChartPage() {
   const [chart, setChart] = useState<AstroChart | null>(null);
@@ -50,6 +53,7 @@ export default function ChartPage() {
     setWheelSize(calculateWheelSize());
 
     // Set up Tone.js audio service callbacks
+    const toneAudioService = getToneAudioService();
     toneAudioService.onTimeUpdateCallback((time) => {
       // Update audio status with current time
       setAudioStatus(prev => ({
@@ -114,6 +118,7 @@ export default function ChartPage() {
 
     try {
       // Generate note events using Tone.js
+      const toneAudioService = getToneAudioService();
       const noteEvents = toneAudioService.generateNoteEvents(chartData, genre);
       
       if (noteEvents.length === 0) {
@@ -168,11 +173,13 @@ export default function ChartPage() {
   };
 
   const handleStop = () => {
+    const toneAudioService = getToneAudioService();
     toneAudioService.stop();
     setAudioStatus(prev => ({ ...prev, isPlaying: false }));
   };
 
   const handlePause = () => {
+    const toneAudioService = getToneAudioService();
     toneAudioService.pause();
     setAudioStatus(prev => ({ ...prev, isPlaying: false }));
   };
@@ -180,12 +187,14 @@ export default function ChartPage() {
   const handleMute = () => {
     const newMutedState = !isMuted;
     setIsMuted(newMutedState);
+    const toneAudioService = getToneAudioService();
     toneAudioService.setVolume(newMutedState ? 0 : volume);
   };
 
   const handleVolumeChange = (newVolume: number) => {
     setVolume(newVolume);
     if (!isMuted) {
+      const toneAudioService = getToneAudioService();
       toneAudioService.setVolume(newVolume);
     }
   };
@@ -246,7 +255,7 @@ export default function ChartPage() {
               <>
                 <div className="mb-8 flex justify-center">
                   <div className="chart-container" style={{ width: '100%', maxWidth: '720px', margin: '0 auto' }}>
-                    <UnifiedAstrologicalWheel
+                    <AstrologicalWheel
                       planets={Object.entries(chart.planets).map(([name, data]) => ({
                         id: name.toLowerCase(),
                         name,

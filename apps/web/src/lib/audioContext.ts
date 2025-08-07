@@ -4,42 +4,42 @@
 let audioContextInitialized = false;
 let audioContext: AudioContext | null = null;
 
+// Check if we're in a browser environment
+const isBrowser = typeof window !== 'undefined';
+
 export const initializeAudioContext = async (): Promise<void> => {
-  if (audioContextInitialized) return;
+  if (audioContextInitialized || !isBrowser) return;
   
   try {
-    // Check if we're in a browser environment
-    if (typeof window !== 'undefined') {
-      // Create audio context
-      audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      console.log('🎵 Audio context created, state:', audioContext.state);
-      
-      // Add click listener to start audio context on first user interaction
-      const startAudioOnInteraction = async () => {
-        try {
-          if (audioContext && audioContext.state === 'suspended') {
-            await audioContext.resume();
-            console.log('🎵 Audio context resumed on user interaction');
-          }
-          
-          audioContextInitialized = true;
-          
-          // Remove the listener after first interaction
-          document.removeEventListener('click', startAudioOnInteraction);
-          document.removeEventListener('touchstart', startAudioOnInteraction);
-          document.removeEventListener('keydown', startAudioOnInteraction);
-        } catch (error) {
-          console.warn('⚠️ Failed to initialize audio context:', error);
+    // Create audio context
+    audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    console.log('🎵 Audio context created, state:', audioContext.state);
+    
+    // Add click listener to start audio context on first user interaction
+    const startAudioOnInteraction = async () => {
+      try {
+        if (audioContext && audioContext.state === 'suspended') {
+          await audioContext.resume();
+          console.log('🎵 Audio context resumed on user interaction');
         }
-      };
-      
-      // Add listeners for user interaction
-      document.addEventListener('click', startAudioOnInteraction);
-      document.addEventListener('touchstart', startAudioOnInteraction);
-      document.addEventListener('keydown', startAudioOnInteraction);
-      
-      console.log('🎵 Audio context listeners added');
-    }
+        
+        audioContextInitialized = true;
+        
+        // Remove the listener after first interaction
+        document.removeEventListener('click', startAudioOnInteraction);
+        document.removeEventListener('touchstart', startAudioOnInteraction);
+        document.removeEventListener('keydown', startAudioOnInteraction);
+      } catch (error) {
+        console.warn('⚠️ Failed to initialize audio context:', error);
+      }
+    };
+    
+    // Add listeners for user interaction
+    document.addEventListener('click', startAudioOnInteraction);
+    document.addEventListener('touchstart', startAudioOnInteraction);
+    document.addEventListener('keydown', startAudioOnInteraction);
+    
+    console.log('🎵 Audio context listeners added');
   } catch (error) {
     console.warn('⚠️ Audio context initialization failed:', error);
   }
@@ -47,7 +47,7 @@ export const initializeAudioContext = async (): Promise<void> => {
 
 export const ensureAudioContext = async (): Promise<boolean> => {
   try {
-    if (typeof window === 'undefined') return false;
+    if (!isBrowser) return false;
     
     // If we don't have an audio context, create one
     if (!audioContext) {
@@ -79,7 +79,7 @@ export const ensureAudioContext = async (): Promise<boolean> => {
 
 export const logAudioContextState = async (): Promise<void> => {
   try {
-    if (typeof window === 'undefined' || !audioContext) return;
+    if (!isBrowser || !audioContext) return;
     
     console.log('🎵 Audio Context State:', {
       state: audioContext.state,
@@ -111,11 +111,19 @@ class AudioContextService {
   private onHouseChange: ((house: number) => void) | null = null;
 
   constructor() {
-    this.initializeAudioContext();
+    // Only initialize audio context in browser environment
+    if (isBrowser) {
+      this.initializeAudioContext();
+    }
   }
 
   private initializeAudioContext() {
     try {
+      if (!isBrowser) {
+        console.log('🎵 Skipping audio context initialization (SSR)');
+        return;
+      }
+      
       this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
       this.gainNode = this.audioContext.createGain();
       this.gainNode.connect(this.audioContext.destination);
