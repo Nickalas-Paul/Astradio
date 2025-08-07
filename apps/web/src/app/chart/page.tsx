@@ -181,28 +181,32 @@ export default function ChartPage() {
     await generateToneAudio(chart, genre);
   };
 
-  const handleStop = () => {
+  const handleStop = async () => {
+    const { default: getToneAudioService } = await import('../../lib/toneAudioService');
     const toneAudioService = getToneAudioService();
     toneAudioService.stop();
     setAudioStatus(prev => ({ ...prev, isPlaying: false }));
   };
 
-  const handlePause = () => {
+  const handlePause = async () => {
+    const { default: getToneAudioService } = await import('../../lib/toneAudioService');
     const toneAudioService = getToneAudioService();
     toneAudioService.pause();
     setAudioStatus(prev => ({ ...prev, isPlaying: false }));
   };
 
-  const handleMute = () => {
+  const handleMute = async () => {
     const newMutedState = !isMuted;
     setIsMuted(newMutedState);
+    const { default: getToneAudioService } = await import('../../lib/toneAudioService');
     const toneAudioService = getToneAudioService();
     toneAudioService.setVolume(newMutedState ? 0 : volume);
   };
 
-  const handleVolumeChange = (newVolume: number) => {
+  const handleVolumeChange = async (newVolume: number) => {
     setVolume(newVolume);
     if (!isMuted) {
+      const { default: getToneAudioService } = await import('../../lib/toneAudioService');
       const toneAudioService = getToneAudioService();
       toneAudioService.setVolume(newVolume);
     }
