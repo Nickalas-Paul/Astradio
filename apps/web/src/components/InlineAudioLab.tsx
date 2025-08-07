@@ -57,6 +57,9 @@ export default function InlineAudioLab() {
 
   // Set up Tone.js audio service callbacks
   useEffect(() => {
+    // Only initialize on client side
+    if (typeof window === 'undefined') return;
+    
     const toneAudioService = getToneAudioService();
     
     toneAudioService.onTimeUpdateCallback((time: number) => {

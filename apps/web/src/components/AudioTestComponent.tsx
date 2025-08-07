@@ -13,6 +13,9 @@ export default function AudioTestComponent() {
   const [testResults, setTestResults] = useState<string[]>([]);
 
   useEffect(() => {
+    // Only initialize on client side
+    if (typeof window === 'undefined') return;
+    
     const audioController = getUnifiedAudioController();
     
     audioController.onStatusChangeCallback((status) => {

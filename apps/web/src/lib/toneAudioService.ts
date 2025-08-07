@@ -48,13 +48,29 @@ class ToneAudioService {
   private duration = 0;
 
   constructor() {
-    this.initializeTone();
+    // Don't initialize immediately during SSR
+    if (typeof window !== 'undefined') {
+      this.initializeTone();
+    }
+  }
+
+  // Public method to initialize when needed
+  async initialize(): Promise<void> {
+    if (!this.isInitialized && typeof window !== 'undefined') {
+      await this.initializeTone();
+    }
   }
 
   private async initializeTone() {
     try {
       if (typeof window === 'undefined') {
         console.log('🎵 Skipping Tone.js initialization (SSR)');
+        return;
+      }
+
+      // Check if Tone is available
+      if (typeof Tone === 'undefined') {
+        console.warn('🎵 Tone.js not available, skipping initialization');
         return;
       }
 

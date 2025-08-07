@@ -33,11 +33,16 @@ class UnifiedAudioController {
   private onStatusChange: ((status: AudioStatus) => void) | null = null;
 
   constructor() {
-    this.setupAudioServiceCallbacks();
-    this.setupToneServiceCallbacks();
+    // Only initialize on client side
+    if (typeof window !== 'undefined') {
+      this.setupAudioServiceCallbacks();
+      this.setupToneServiceCallbacks();
+    }
   }
 
   private setupAudioServiceCallbacks() {
+    if (typeof window === 'undefined') return;
+    
     audioService.onTimeUpdateCallback((time: number) => {
       this.updateStatus({
         currentTime: time,
@@ -55,6 +60,8 @@ class UnifiedAudioController {
   }
 
   private setupToneServiceCallbacks() {
+    if (typeof window === 'undefined') return;
+    
     const toneService = getToneAudioService();
     
     toneService.onTimeUpdateCallback((time: number) => {
