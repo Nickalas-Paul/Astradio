@@ -1,16 +1,13 @@
 FROM node:18
 
 WORKDIR /usr/src/app
-
 COPY . .
 
-# Enable Corepack to use pnpm
-RUN corepack enable && corepack prepare pnpm@latest --activate
+# Install all dependencies including devDependencies
+RUN npm install
 
-# Install deps WITH lockfile
-RUN pnpm install --frozen-lockfile
+# Build everything including typescript
+RUN npm run build
 
-# Build
-RUN pnpm run build
-
-CMD ["node", "dist/app.js"] 
+# Start API server
+CMD ["npm", "run", "start"] 
