@@ -1,8 +1,8 @@
 // Astrological Music Service for Backend
 // Handles chart-to-music conversion and provides API endpoints
 
-import { AstroChart, PlanetData, AspectData } from '../types';
-import { AudioGenerator } from '@astradio/audio-mappings';
+import { AstroChart, PlanetData, AspectData } from '../types/index.js';
+import { AudioGenerator } from '../core/audioGenerator.js';
 
 // Define AudioNote type locally to match the expected interface
 interface AudioNote {

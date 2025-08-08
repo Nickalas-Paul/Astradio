@@ -1,24 +1,16 @@
-// Core types for Astradio API
-export interface BirthData {
-  date: string;
-  time: string;
-  latitude: number;
-  longitude: number;
-  timezone: number;
-}
-
-export interface SignData {
-  name: string;
-  element: 'Fire' | 'Earth' | 'Air' | 'Water';
-  modality: 'Cardinal' | 'Fixed' | 'Mutable';
-  degree: number;
-}
-
+// Core astrological types
 export interface PlanetData {
   longitude: number;
   sign: SignData;
   house: number;
   retrograde: boolean;
+}
+
+export interface SignData {
+  name: string;
+  degree: number;
+  element: 'Fire' | 'Earth' | 'Air' | 'Water';
+  modality: 'Cardinal' | 'Fixed' | 'Mutable';
 }
 
 export interface HouseData {
@@ -35,40 +27,83 @@ export interface AspectData {
 }
 
 export interface AstroChart {
+  planets: { [key: string]: PlanetData };
+  houses: { [key: string]: HouseData };
+  aspects?: AspectData[];
   metadata: {
     conversion_method: string;
     ayanamsa_correction: number;
     birth_datetime: string;
-    coordinate_system: 'tropical' | 'sidereal';
+    coordinate_system: string;
   };
-  planets: Record<string, PlanetData>;
-  houses: Record<string, HouseData>;
-  aspects?: AspectData[];
 }
 
-export interface AudioSession {
-  id: string;
-  chartId: string;
-  configuration: any;
-  isPlaying: boolean;
-  startTime: number;
-}
-
-export interface AudioConfiguration {
-  mode?: string;
-  duration?: number;
-  tempo?: number;
-  genre?: string;
-}
-
-export interface MelodicAudioSession extends AudioSession {
-  phrases: any[];
-  scale: string[];
-  key: string;
+// Audio generation types
+export interface AudioConfig {
+  genre: 'ambient' | 'techno' | 'world' | 'hip-hop';
   tempo: number;
-  timeSignature: string;
+  key: string;
+  scale: string[];
+  duration: number;
 }
 
-export type GenreType = 'ambient' | 'electronic' | 'classical' | 'jazz' | 'rock' | 'folk' | 'hip-hop' | 'country' | 'reggae' | 'blues' | 'pop' | 'metal' | 'punk' | 'indie' | 'lo-fi' | 'synthwave' | 'chillwave' | 'downtempo' | 'world' | 'experimental';
+export interface PlanetAudioMapping {
+  planet: string;
+  instrument: string;
+  frequency: number;
+  volume: number;
+  envelope: {
+    attack: number;
+    decay: number;
+    sustain: number;
+    release: number;
+  };
+}
 
-export type MoodType = 'energetic' | 'calm' | 'melancholic' | 'uplifting' | 'mysterious' | 'romantic' | 'aggressive' | 'peaceful' | 'nostalgic' | 'futuristic' | 'organic' | 'mechanical' | 'spiritual' | 'grounded' | 'ethereal' | 'dramatic' | 'playful' | 'serious' | 'contemplative' | 'celebratory'; 
+export interface MusicTrack {
+  id: string;
+  audioConfig: AudioConfig;
+  planetMappings: PlanetAudioMapping[];
+  generated_at: string;
+  chart_data: AstroChart;
+}
+
+// API types
+export interface DailyChartRequest {
+  date?: string;
+  location?: {
+    latitude: number;
+    longitude: number;
+    timezone: number;
+  };
+}
+
+export interface DailyChartResponse {
+  chart: AstroChart;
+  audio_config: AudioConfig;
+  planet_mappings: PlanetAudioMapping[];
+  track_id: string;
+}
+
+export interface GenreSettings {
+  ambient: {
+    tempo: number;
+    instruments: string[];
+    effects: string[];
+  };
+  techno: {
+    tempo: number;
+    instruments: string[];
+    effects: string[];
+  };
+  world: {
+    tempo: number;
+    instruments: string[];
+    effects: string[];
+  };
+  'hip-hop': {
+    tempo: number;
+    instruments: string[];
+    effects: string[];
+  };
+}
