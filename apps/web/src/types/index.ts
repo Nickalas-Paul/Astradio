@@ -61,3 +61,12 @@ export interface FormData {
   longitude: number;
   timezone?: number;
 }
+
+// Audio status for compatibility
+export interface AudioStatus {
+  isPlaying: boolean;
+  currentTime?: number;
+  duration?: number;
+  volume?: number;
+  currentSession?: any;
+}
