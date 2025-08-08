@@ -11,6 +11,9 @@ export interface AudioNote {
   volume: number;
   instrument: string;
   startTime: number;
+  planet?: string;
+  sign?: string;
+  house?: number;
 }
 
 export interface AudioComposition {

@@ -39,10 +39,11 @@ export interface AstroChart {
     conversion_method: string;
     ayanamsa_correction: number;
     birth_datetime: string;
-    coordinate_system: string;
+    coordinate_system: 'tropical' | 'sidereal';
   };
   planets: Record<string, PlanetData>;
   houses: Record<string, HouseData>;
+  aspects?: AspectData[];
 }
 
 export interface AudioSession {

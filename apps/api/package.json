@@ -28,7 +28,10 @@
     "uuid": "^9.0.1",
     "xss-clean": "^0.1.4",
     "zod": "^3.22.4",
-    "axios": "^1.6.0"
+    "axios": "^1.6.0",
+    "@astradio/astro-core": "workspace:*",
+    "@astradio/audio-mappings": "workspace:*",
+    "@astradio/types": "workspace:*"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",

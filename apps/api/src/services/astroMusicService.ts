@@ -4,6 +4,18 @@
 import { AstroChart, PlanetData, AspectData } from '../types';
 import { AudioGenerator } from '@astradio/audio-mappings';
 
+// Define AudioNote type locally to match the expected interface
+interface AudioNote {
+  frequency: number;
+  duration: number;
+  volume: number;
+  instrument: string;
+  startTime: number;
+  planet?: string;
+  sign?: string;
+  house?: number;
+}
+
 export interface MusicGenerationRequest {
   chartData: AstroChart;
   genre: string;
@@ -65,10 +77,7 @@ class AstroMusicService {
           duration: note.duration,
           volume: note.volume,
           instrument: note.instrument,
-          startTime: note.startTime,
-          planet: note.planet,
-          sign: note.sign,
-          house: note.house
+          startTime: note.startTime
         }))
       };
 
