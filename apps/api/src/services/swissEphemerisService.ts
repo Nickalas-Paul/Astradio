@@ -1,416 +1,360 @@
-import { AstroChart, PlanetData, HouseData, AspectData } from '../types';
+import { AstroChart, PlanetData, HouseData, AspectData, SignData } from '../types';
 
-// Swiss Ephemeris WebAssembly integration
+// Try to import Swiss Ephemeris, but don't fail if it's not available
 let SwissEph: any = null;
-
-// Declare window for Node.js environment
-declare const window: any;
+let swissephAvailable = false;
 
 try {
-  // Only try to require in Node.js environment
-  if (typeof window === 'undefined') {
-    SwissEph = require('swisseph-wasm');
-  }
+  SwissEph = require('swisseph');
+  swissephAvailable = true;
+  console.log('✅ Swiss Ephemeris native module loaded successfully');
 } catch (error) {
-  console.warn('Swiss Ephemeris WebAssembly not available, using fallback calculations');
-  // Fallback to basic calculations
+  console.log('⚠️  Swiss Ephemeris native module not available, using fallback calculations');
+  console.log('   To enable full Swiss Ephemeris functionality, install Visual Studio Build Tools');
 }
 
-export interface SwissEphemerisPlanet {
-  name: string;
-  longitude: number;
-  latitude: number;
-  distance: number;
-  speed: number;
-  sign: string;
-  house: number;
-  retrograde: boolean;
-}
+class SwissEphemerisService {
+  private isAvailable: boolean;
 
-export interface SwissEphemerisHouse {
-  house: number;
-  cusp_longitude: number;
-  sign: string;
-}
-
-export interface SwissEphemerisAspect {
-  planet1: string;
-  planet2: string;
-  type: 'conjunction' | 'sextile' | 'square' | 'trine' | 'opposition';
-  angle: number;
-  orb: number;
-  harmonic: string;
-}
-
-export class SwissEphemerisService {
-  private isInitialized = false;
-
-  async initialize(): Promise<void> {
-    if (this.isInitialized) return;
-
-    try {
-      if (SwissEph) {
-        await SwissEph.init();
-        console.log('✅ Swiss Ephemeris WebAssembly initialized');
-      } else {
-        console.log('⚠️ Using fallback Swiss Ephemeris calculations');
-      }
-      this.isInitialized = true;
-    } catch (error) {
-      console.error('❌ Failed to initialize Swiss Ephemeris:', error);
-      throw error;
+  constructor() {
+    this.isAvailable = swissephAvailable;
+    
+    if (this.isAvailable) {
+      this.initializeSwissEph();
+    } else {
+      console.log('🔮 Using simplified astrological calculations (Swiss Ephemeris not available)');
     }
   }
 
-  /**
-   * Calculate planetary positions using Swiss Ephemeris
-   */
+  private initializeSwissEph() {
+    try {
+      // Initialize Swiss Ephemeris with data files
+      const dataPath = process.env.SWISS_EPHEMERIS_DATA_PATH || './temp-swisseph';
+      SwissEph.swe_set_ephe_path(dataPath);
+      console.log('✅ Swiss Ephemeris initialized with data path:', dataPath);
+    } catch (error) {
+      console.error('❌ Failed to initialize Swiss Ephemeris:', error);
+      this.isAvailable = false;
+    }
+  }
+
+  // Calculate planetary positions using Swiss Ephemeris or fallback
   async calculatePlanetaryPositions(
     date: Date,
     latitude: number,
     longitude: number,
     timezone: number
-  ): Promise<SwissEphemerisPlanet[]> {
-    await this.initialize();
-
-    const julianDay = this.dateToJulianDay(date);
-    const planets: SwissEphemerisPlanet[] = [];
-
-    // Traditional planets
-    const planetList = [
-      { name: 'Sun', id: 0 },
-      { name: 'Moon', id: 1 },
-      { name: 'Mercury', id: 2 },
-      { name: 'Venus', id: 3 },
-      { name: 'Mars', id: 4 },
-      { name: 'Jupiter', id: 5 },
-      { name: 'Saturn', id: 6 },
-      { name: 'Uranus', id: 7 },
-      { name: 'Neptune', id: 8 },
-      { name: 'Pluto', id: 9 }
-    ];
-
-    for (const planet of planetList) {
-      try {
-        const position = await this.calculatePlanetPosition(julianDay, planet.id);
-        const sign = this.longitudeToSign(position.longitude);
-        const house = this.calculateHouse(position.longitude, latitude, longitude, julianDay);
-        
-        planets.push({
-          name: planet.name,
-          longitude: position.longitude,
-          latitude: position.latitude,
-          distance: position.distance,
-          speed: position.speed,
-          sign,
-          house,
-          retrograde: position.speed < 0
-        });
-      } catch (error) {
-        console.warn(`Failed to calculate ${planet.name}:`, error);
-      }
+  ): Promise<{ [key: string]: PlanetData }> {
+    if (this.isAvailable) {
+      return this.calculateWithSwissEph(date, latitude, longitude, timezone);
+    } else {
+      return this.calculateWithFallback(date, latitude, longitude, timezone);
     }
-
-    return planets;
   }
 
-  /**
-   * Calculate house cusps using Swiss Ephemeris
-   */
+  // Calculate house cusps using Swiss Ephemeris or fallback
   async calculateHouseCusps(
     date: Date,
     latitude: number,
     longitude: number,
-    timezone: number,
-    houseSystem: 'P' | 'K' | 'R' | 'C' | 'U' | 'E' | 'T' | 'B' | 'M' | 'W' | 'A' | 'V' | 'L' | 'J' | 'O' | 'Q' | 'X' | 'Y' | 'Z' = 'P'
-  ): Promise<SwissEphemerisHouse[]> {
-    await this.initialize();
-
-    const julianDay = this.dateToJulianDay(date);
-    const houses: SwissEphemerisHouse[] = [];
-
-    try {
-      if (SwissEph) {
-        // Use Swiss Ephemeris WebAssembly for precise calculations
-        const houseData = await SwissEph.houses(julianDay, latitude, longitude, houseSystem);
-        
-        for (let i = 1; i <= 12; i++) {
-          const cuspLongitude = houseData.cusps[i];
-          const sign = this.longitudeToSign(cuspLongitude);
-          
-          houses.push({
-            house: i,
-            cusp_longitude: cuspLongitude,
-            sign
-          });
-        }
-      } else {
-        // Fallback calculation using basic astronomical formulas
-        const houses = this.fallbackHouseCalculation(julianDay, latitude, longitude);
-        return houses;
-      }
-    } catch (error) {
-      console.warn('Failed to calculate houses with Swiss Ephemeris, using fallback:', error);
-      return this.fallbackHouseCalculation(julianDay, latitude, longitude);
+    timezone: number
+  ): Promise<{ [key: string]: HouseData }> {
+    if (this.isAvailable) {
+      return this.calculateHousesWithSwissEph(date, latitude, longitude, timezone);
+    } else {
+      return this.calculateHousesWithFallback(date, latitude, longitude, timezone);
     }
-
-    return houses;
   }
 
-  /**
-   * Calculate aspects between planets
-   */
-  calculateAspects(planets: SwissEphemerisPlanet[]): SwissEphemerisAspect[] {
-    const aspects: SwissEphemerisAspect[] = [];
-    const aspectOrbs = {
-      conjunction: 10,
-      sextile: 6,
-      square: 8,
-      trine: 8,
-      opposition: 10
-    };
-
-    for (let i = 0; i < planets.length; i++) {
-      for (let j = i + 1; j < planets.length; j++) {
-        const planet1 = planets[i];
-        const planet2 = planets[j];
+  // Calculate aspects between planets
+  calculateAspects(planets: { [key: string]: PlanetData }): AspectData[] {
+    const aspects: AspectData[] = [];
+    const planetNames = Object.keys(planets);
+    
+    for (let i = 0; i < planetNames.length; i++) {
+      for (let j = i + 1; j < planetNames.length; j++) {
+        const planet1Name = planetNames[i];
+        const planet2Name = planetNames[j];
+        const planet1 = planets[planet1Name];
+        const planet2 = planets[planet2Name];
         
-        const angle = Math.abs(planet1.longitude - planet2.longitude);
-        const normalizedAngle = angle > 180 ? 360 - angle : angle;
-
-        // Check for major aspects
-        if (normalizedAngle <= aspectOrbs.conjunction) {
-          aspects.push({
-            planet1: planet1.name,
-            planet2: planet2.name,
-            type: 'conjunction',
-            angle: normalizedAngle,
-            orb: aspectOrbs.conjunction - normalizedAngle,
-            harmonic: '1'
-          });
-        } else if (Math.abs(normalizedAngle - 60) <= aspectOrbs.sextile) {
-          aspects.push({
-            planet1: planet1.name,
-            planet2: planet2.name,
-            type: 'sextile',
-            angle: normalizedAngle,
-            orb: Math.abs(normalizedAngle - 60),
-            harmonic: '6'
-          });
-        } else if (Math.abs(normalizedAngle - 90) <= aspectOrbs.square) {
-          aspects.push({
-            planet1: planet1.name,
-            planet2: planet2.name,
-            type: 'square',
-            angle: normalizedAngle,
-            orb: Math.abs(normalizedAngle - 90),
-            harmonic: '4'
-          });
-        } else if (Math.abs(normalizedAngle - 120) <= aspectOrbs.trine) {
-          aspects.push({
-            planet1: planet1.name,
-            planet2: planet2.name,
-            type: 'trine',
-            angle: normalizedAngle,
-            orb: Math.abs(normalizedAngle - 120),
-            harmonic: '3'
-          });
-        } else if (Math.abs(normalizedAngle - 180) <= aspectOrbs.opposition) {
-          aspects.push({
-            planet1: planet1.name,
-            planet2: planet2.name,
-            type: 'opposition',
-            angle: normalizedAngle,
-            orb: Math.abs(normalizedAngle - 180),
-            harmonic: '2'
-          });
+        if (planet1 && planet2) {
+          const aspect = this.calculateAspect(planet1, planet2);
+          if (aspect) {
+            aspects.push({
+              planet1: planet1Name,
+              planet2: planet2Name,
+              type: aspect.type,
+              angle: aspect.angle,
+              harmonic: aspect.harmonic
+            });
+          }
         }
       }
     }
-
+    
     return aspects;
   }
 
-  /**
-   * Convert Swiss Ephemeris data to AstroChart format
-   */
+  // Convert to AstroChart format
   convertToAstroChart(
-    planets: SwissEphemerisPlanet[],
-    houses: SwissEphemerisHouse[],
-    aspects: SwissEphemerisAspect[],
+    planets: { [key: string]: PlanetData },
+    houses: { [key: string]: HouseData },
+    aspects: AspectData[],
     birthData: any
   ): AstroChart {
-    const chartPlanets: Record<string, PlanetData> = {};
-    const chartHouses: Record<string, HouseData> = {};
-
-    // Convert planets
-    for (const planet of planets) {
-      chartPlanets[planet.name] = {
-        longitude: planet.longitude,
-        sign: {
-          name: planet.sign,
-          element: this.signToElement(planet.sign),
-          modality: this.signToModality(planet.sign),
-          degree: planet.longitude % 30
-        },
-        house: planet.house,
-        retrograde: planet.retrograde
-      };
-    }
-
-    // Convert houses
-    for (const house of houses) {
-      chartHouses[house.house.toString()] = {
-        cusp_longitude: house.cusp_longitude,
-        sign: {
-          name: house.sign,
-          element: this.signToElement(house.sign),
-          modality: this.signToModality(house.sign),
-          degree: house.cusp_longitude % 30
-        }
-      };
-    }
-
-    // Convert aspects
-    const chartAspects: AspectData[] = aspects.map(aspect => ({
-      planet1: aspect.planet1,
-      planet2: aspect.planet2,
-      type: aspect.type,
-      angle: aspect.angle,
-      harmonic: aspect.harmonic
-    }));
-
     return {
+      planets,
+      houses,
       metadata: {
-        conversion_method: "swiss_ephemeris",
+        conversion_method: this.isAvailable ? 'swiss_ephemeris' : 'simplified',
         ayanamsa_correction: 0,
-        birth_datetime: birthData.date,
-        coordinate_system: "tropical"
-      },
-      planets: chartPlanets,
-      houses: chartHouses
+        birth_datetime: birthData.date + 'T' + birthData.time,
+        coordinate_system: 'tropical'
+      }
     };
   }
 
-  /**
-   * Calculate transit positions for current date
-   */
-  async calculateTransits(
-    natalDate: Date,
-    transitDate: Date,
+  // Swiss Ephemeris calculation methods
+  private calculateWithSwissEph(
+    date: Date,
     latitude: number,
     longitude: number,
     timezone: number
-  ): Promise<SwissEphemerisPlanet[]> {
-    return await this.calculatePlanetaryPositions(transitDate, latitude, longitude, timezone);
-  }
-
-  // Private helper methods
-
-  private async calculatePlanetPosition(julianDay: number, planetId: number): Promise<any> {
-    if (SwissEph) {
+  ): { [key: string]: PlanetData } {
+    const planets: { [key: string]: PlanetData } = {};
+    const julianDay = this.dateToJulianDay(date);
+    
+    // Calculate positions for major planets
+    const planetIds = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]; // Sun through Pluto
+    const planetNames = ['Sun', 'Moon', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune', 'Pluto'];
+    
+    planetIds.forEach((planetId, index) => {
       try {
-        const position = await SwissEph.planet(julianDay, planetId);
-        return {
-          longitude: position.longitude,
-          latitude: position.latitude,
-          distance: position.distance,
-          speed: position.speed
+        const result = SwissEph.swe_calc_ut(julianDay, planetId, SwissEph.SEFLG_SWIEPH);
+        const longitude = result.longitude;
+        const sign = this.longitudeToSign(longitude);
+        
+        planets[planetNames[index]] = {
+          longitude,
+          sign,
+          house: this.calculateHouse(longitude),
+          retrograde: result.retrograde === 1
         };
       } catch (error) {
-        console.warn('Swiss Ephemeris calculation failed, using fallback');
-        return this.fallbackPlanetCalculation(julianDay, planetId);
+        console.error(`Failed to calculate ${planetNames[index]}:`, error);
       }
-    } else {
-      return this.fallbackPlanetCalculation(julianDay, planetId);
-    }
+    });
+    
+    return planets;
   }
 
-  private fallbackPlanetCalculation(julianDay: number, planetId: number): any {
-    // Basic astronomical calculations as fallback
-    const time = (julianDay - 2451545.0) / 36525.0;
+  private calculateHousesWithSwissEph(
+    date: Date,
+    latitude: number,
+    longitude: number,
+    timezone: number
+  ): { [key: string]: HouseData } {
+    const houses: { [key: string]: HouseData } = {};
+    const julianDay = this.dateToJulianDay(date);
     
-    // Simplified planetary positions (not as precise as Swiss Ephemeris)
-    const positions = {
-      0: { longitude: (280.46646 + 36000.76983 * time) % 360, latitude: 0, distance: 1, speed: 1 }, // Sun
-      1: { longitude: (218.3165 + 481267.8813 * time) % 360, latitude: 0, distance: 384400, speed: 13.2 }, // Moon
-      2: { longitude: (252.2509 + 149472.6742 * time) % 360, latitude: 0, distance: 0.387, speed: 1.6 }, // Mercury
-      3: { longitude: (181.9798 + 58517.8153 * time) % 360, latitude: 0, distance: 0.723, speed: 1.2 }, // Venus
-      4: { longitude: (355.4333 + 19141.6964 * time) % 360, latitude: 0, distance: 1.524, speed: 0.88 }, // Mars
-      5: { longitude: (34.3514 + 3034.9057 * time) % 360, latitude: 0, distance: 5.203, speed: 0.44 }, // Jupiter
-      6: { longitude: (50.0774 + 1222.1138 * time) % 360, latitude: 0, distance: 9.537, speed: 0.32 }, // Saturn
-      7: { longitude: (314.0550 + 428.4668 * time) % 360, latitude: 0, distance: 19.191, speed: 0.21 }, // Uranus
-      8: { longitude: (304.3487 + 218.4862 * time) % 360, latitude: 0, distance: 30.069, speed: 0.17 }, // Neptune
-      9: { longitude: (238.9293 + 145.2078 * time) % 360, latitude: 0, distance: 39.482, speed: 0.15 } // Pluto
-    };
-
-    return positions[planetId as keyof typeof positions] || { longitude: 0, latitude: 0, distance: 1, speed: 1 };
-  }
-
-  private fallbackHouseCalculation(julianDay: number, latitude: number, longitude: number): SwissEphemerisHouse[] {
-    // Basic house calculation using Placidus system
-    const houses: SwissEphemerisHouse[] = [];
-    const time = (julianDay - 2451545.0) / 36525.0;
-    
-    // Simplified house calculation
-    for (let i = 1; i <= 12; i++) {
-      const cuspLongitude = (i - 1) * 30; // Simplified equal house system
-      const sign = this.longitudeToSign(cuspLongitude);
+    try {
+      const result = SwissEph.swe_houses(julianDay, latitude, longitude, 'P'); // Placidus system
       
-      houses.push({
-        house: i,
-        cusp_longitude: cuspLongitude,
-        sign
-      });
+      for (let i = 1; i <= 12; i++) {
+        const cuspLongitude = result.cusps[i];
+        const sign = this.longitudeToSign(cuspLongitude);
+        
+        houses[i.toString()] = {
+          cusp_longitude: cuspLongitude,
+          sign
+        };
+      }
+    } catch (error) {
+      console.error('Failed to calculate houses:', error);
     }
-
+    
     return houses;
   }
 
+  // Fallback calculation methods (simplified)
+  private calculateWithFallback(
+    date: Date,
+    latitude: number,
+    longitude: number,
+    timezone: number
+  ): { [key: string]: PlanetData } {
+    const planets: { [key: string]: PlanetData } = {};
+    
+    // Simplified planetary positions based on date
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    
+    // Basic planetary positions (simplified calculations)
+    const sunLongitude = this.calculateSunPosition(year, month, day);
+    const moonLongitude = this.calculateMoonPosition(year, month, day);
+    
+    planets['Sun'] = {
+      longitude: sunLongitude,
+      sign: this.longitudeToSign(sunLongitude),
+      house: 1, // Simplified
+      retrograde: false
+    };
+    
+    planets['Moon'] = {
+      longitude: moonLongitude,
+      sign: this.longitudeToSign(moonLongitude),
+      house: 1, // Simplified
+      retrograde: false
+    };
+    
+    // Add other planets with simplified positions
+    const otherPlanets = [
+      { name: 'Mercury', baseLongitude: sunLongitude + 30 },
+      { name: 'Venus', baseLongitude: sunLongitude + 60 },
+      { name: 'Mars', baseLongitude: sunLongitude + 90 },
+      { name: 'Jupiter', baseLongitude: sunLongitude + 120 },
+      { name: 'Saturn', baseLongitude: sunLongitude + 150 }
+    ];
+    
+    otherPlanets.forEach(planet => {
+      const longitude = (planet.baseLongitude + (year - 2000) * 0.5) % 360;
+      planets[planet.name] = {
+        longitude,
+        sign: this.longitudeToSign(longitude),
+        house: 1, // Simplified
+        retrograde: false
+      };
+    });
+    
+    return planets;
+  }
+
+  private calculateHousesWithFallback(
+    date: Date,
+    latitude: number,
+    longitude: number,
+    timezone: number
+  ): { [key: string]: HouseData } {
+    const houses: { [key: string]: HouseData } = {};
+    
+    // Simplified house calculation (equal house system)
+    for (let i = 1; i <= 12; i++) {
+      const cuspLongitude = (i - 1) * 30; // 30 degrees per house
+      houses[i.toString()] = {
+        cusp_longitude: cuspLongitude,
+        sign: this.longitudeToSign(cuspLongitude)
+      };
+    }
+    
+    return houses;
+  }
+
+  // Utility methods
   private dateToJulianDay(date: Date): number {
     const year = date.getFullYear();
     const month = date.getMonth() + 1;
     const day = date.getDate();
     const hour = date.getHours();
     const minute = date.getMinutes();
-    const second = date.getSeconds();
-
-    // Convert to Julian Day Number
-    let jd = 367 * year - Math.floor(7 * (year + Math.floor((month + 9) / 12)) / 4) + Math.floor(275 * month / 9) + day + 1721013.5;
-    jd += hour / 24 + minute / 1440 + second / 86400;
-
+    
+    // Simplified Julian Day calculation
+    const a = Math.floor((14 - month) / 12);
+    const y = year + 4800 - a;
+    const m = month + 12 * a - 3;
+    
+    let jd = day + Math.floor((153 * m + 2) / 5) + 365 * y + Math.floor(y / 4) - Math.floor(y / 100) + Math.floor(y / 400) - 32045;
+    
+    // Add time component
+    jd += (hour - 12) / 24 + minute / 1440;
+    
     return jd;
   }
 
-  private longitudeToSign(longitude: number): string {
-    const signs = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo', 'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'];
+  private longitudeToSign(longitude: number): SignData {
+    const signs = [
+      { name: 'Aries', element: 'Fire' as const, modality: 'Cardinal' as const },
+      { name: 'Taurus', element: 'Earth' as const, modality: 'Fixed' as const },
+      { name: 'Gemini', element: 'Air' as const, modality: 'Mutable' as const },
+      { name: 'Cancer', element: 'Water' as const, modality: 'Cardinal' as const },
+      { name: 'Leo', element: 'Fire' as const, modality: 'Fixed' as const },
+      { name: 'Virgo', element: 'Earth' as const, modality: 'Mutable' as const },
+      { name: 'Libra', element: 'Air' as const, modality: 'Cardinal' as const },
+      { name: 'Scorpio', element: 'Water' as const, modality: 'Fixed' as const },
+      { name: 'Sagittarius', element: 'Fire' as const, modality: 'Mutable' as const },
+      { name: 'Capricorn', element: 'Earth' as const, modality: 'Cardinal' as const },
+      { name: 'Aquarius', element: 'Air' as const, modality: 'Fixed' as const },
+      { name: 'Pisces', element: 'Water' as const, modality: 'Mutable' as const }
+    ];
+    
     const signIndex = Math.floor(longitude / 30);
-    return signs[signIndex % 12];
+    const degree = longitude % 30;
+    
+    return {
+      name: signs[signIndex].name,
+      degree: Math.floor(degree),
+      element: signs[signIndex].element,
+      modality: signs[signIndex].modality
+    };
   }
 
-  private calculateHouse(planetLongitude: number, latitude: number, longitude: number, julianDay: number): number {
+  private calculateAspect(planet1: PlanetData, planet2: PlanetData): { type: string; angle: number; harmonic: string } | null {
+    const orb = Math.abs(planet1.longitude - planet2.longitude);
+    const normalizedOrb = orb > 180 ? 360 - orb : orb;
+    
+    // Define major aspects
+    const aspects = [
+      { name: 'conjunction', angle: 0, orb: 10, harmonic: '1' },
+      { name: 'sextile', angle: 60, orb: 6, harmonic: '6' },
+      { name: 'square', angle: 90, orb: 8, harmonic: '4' },
+      { name: 'trine', angle: 120, orb: 8, harmonic: '3' },
+      { name: 'opposition', angle: 180, orb: 10, harmonic: '2' }
+    ];
+    
+    for (const aspect of aspects) {
+      if (Math.abs(normalizedOrb - aspect.angle) <= aspect.orb) {
+        return {
+          type: aspect.name,
+          angle: normalizedOrb,
+          harmonic: aspect.harmonic
+        };
+      }
+    }
+    
+    return null;
+  }
+
+  private calculateHouse(longitude: number): number {
     // Simplified house calculation
-    const houseSize = 30; // Equal house system
-    return Math.floor(planetLongitude / houseSize) + 1;
+    return Math.floor(longitude / 30) + 1;
   }
 
-  private signToElement(sign: string): 'Fire' | 'Earth' | 'Air' | 'Water' {
-    const elementMap: Record<string, 'Fire' | 'Earth' | 'Air' | 'Water'> = {
-      'Aries': 'Fire', 'Leo': 'Fire', 'Sagittarius': 'Fire',
-      'Taurus': 'Earth', 'Virgo': 'Earth', 'Capricorn': 'Earth',
-      'Gemini': 'Air', 'Libra': 'Air', 'Aquarius': 'Air',
-      'Cancer': 'Water', 'Scorpio': 'Water', 'Pisces': 'Water'
-    };
-    return elementMap[sign] || 'Fire';
+  // Simplified planetary position calculations
+  private calculateSunPosition(year: number, month: number, day: number): number {
+    // Simplified solar position calculation
+    const daysSince2000 = (year - 2000) * 365.25 + this.dayOfYear(month, day);
+    return (daysSince2000 * 0.9856) % 360;
   }
 
-  private signToModality(sign: string): 'Cardinal' | 'Fixed' | 'Mutable' {
-    const modalityMap: Record<string, 'Cardinal' | 'Fixed' | 'Mutable'> = {
-      'Aries': 'Cardinal', 'Cancer': 'Cardinal', 'Libra': 'Cardinal', 'Capricorn': 'Cardinal',
-      'Taurus': 'Fixed', 'Leo': 'Fixed', 'Scorpio': 'Fixed', 'Aquarius': 'Fixed',
-      'Gemini': 'Mutable', 'Virgo': 'Mutable', 'Sagittarius': 'Mutable', 'Pisces': 'Mutable'
-    };
-    return modalityMap[sign] || 'Cardinal';
+  private calculateMoonPosition(year: number, month: number, day: number): number {
+    // Simplified lunar position calculation
+    const daysSince2000 = (year - 2000) * 365.25 + this.dayOfYear(month, day);
+    return (daysSince2000 * 13.1764) % 360;
+  }
+
+  private dayOfYear(month: number, day: number): number {
+    const daysInMonth = [0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    let dayOfYear = day;
+    for (let i = 1; i < month; i++) {
+      dayOfYear += daysInMonth[i];
+    }
+    return dayOfYear;
+  }
+
+  // Public method to check if Swiss Ephemeris is available
+  isSwissEphAvailable(): boolean {
+    return this.isAvailable;
   }
 }
 

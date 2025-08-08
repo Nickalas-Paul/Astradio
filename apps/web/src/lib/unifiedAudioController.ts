@@ -33,6 +33,7 @@ class UnifiedAudioController {
   private onStatusChange: ((status: AudioStatus) => void) | null = null;
   private audioService: any = null;
   private toneAudioService: any = null;
+  private astroMusicEngine: any = null;
 
   constructor() {
     // Only initialize on client side
@@ -49,6 +50,7 @@ class UnifiedAudioController {
       
       this.setupAudioServiceCallbacks();
       this.setupToneServiceCallbacks();
+      this.setupAstroMusicEngineCallbacks();
     } catch (error) {
       console.error('Failed to initialize audio services:', error);
     }
@@ -100,6 +102,29 @@ class UnifiedAudioController {
     }
   }
 
+  private async setupAstroMusicEngineCallbacks() {
+    if (typeof window === 'undefined') return;
+    
+    try {
+      // Dynamic import to prevent SSR issues
+      const { default: getAstroMusicEngine } = await import('./astroMusicEngine');
+      this.astroMusicEngine = getAstroMusicEngine();
+      
+      // Set up periodic status updates for astro music engine
+      setInterval(() => {
+        if (this.currentMode === 'realtime' && this.astroMusicEngine) {
+          this.updateStatus({
+            currentTime: this.astroMusicEngine.getCurrentTime(),
+            isPlaying: this.astroMusicEngine.isPlaying(),
+            duration: this.astroMusicEngine.getDuration()
+          });
+        }
+      }, 100);
+    } catch (error) {
+      console.error('Failed to initialize astro music engine:', error);
+    }
+  }
+
   private updateStatus(updates: Partial<AudioStatus>) {
     this.audioStatus = { ...this.audioStatus, ...updates };
     if (this.onStatusChange) {
@@ -118,7 +143,9 @@ class UnifiedAudioController {
 
       console.log('🎵 Playing daily audio via API...');
       
-      const apiUrl = `/api/audio/daily?genre=${genre}&duration=${duration}`;
+      // Use environment variable for API URL, fallback to localhost for development
+      const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const apiUrl = `${apiBaseUrl}/api/audio/daily?genre=${genre}&duration=${duration}`;
       const success = await this.audioService.loadAudioFromAPI(apiUrl);
       
       if (success) {
@@ -148,8 +175,8 @@ class UnifiedAudioController {
     }
   }
 
-  // Play chart audio using real-time Tone.js generation
-  async playChartAudio(chartData: any, genre: string = 'ambient'): Promise<boolean> {
+  // Play chart audio using real-time astro music engine
+  async playChartAudio(chartData: any, genre: string = 'ambient', duration: number = 60): Promise<boolean> {
     try {
       this.updateStatus({
         isLoading: true,
@@ -157,26 +184,39 @@ class UnifiedAudioController {
         mode: 'realtime'
       });
 
-      console.log('🎵 Playing chart audio via real-time generation...');
+      console.log('🎵 Playing chart audio via astro music engine...');
       
-      // Ensure tone service is initialized
-      if (!this.toneAudioService) {
-        const { default: getToneAudioService } = await import('./toneAudioService');
-        this.toneAudioService = getToneAudioService();
+      // Ensure astro music engine is initialized
+      if (!this.astroMusicEngine) {
+        const { default: getAstroMusicEngine } = await import('./astroMusicEngine');
+        this.astroMusicEngine = getAstroMusicEngine();
       }
       
-      const noteEvents = this.toneAudioService.generateNoteEvents(chartData, genre);
+      // Initialize the engine
+      await this.astroMusicEngine.initialize();
       
-      if (noteEvents.length === 0) {
+      // Generate music from chart data
+      const config = {
+        genre: genre,
+        duration: duration,
+        volume: 0.7,
+        tempo: 120
+      };
+      
+      const notes = this.astroMusicEngine.generateChartMusic(chartData, config);
+      
+      if (notes.length === 0) {
         throw new Error('No musical events generated from chart data');
       }
 
-      const success = await this.toneAudioService.playNoteEvents(noteEvents);
+      console.log(`🎵 Generated ${notes.length} musical notes from chart data`);
+      
+      const success = await this.astroMusicEngine.playNotes(notes);
       
       this.updateStatus({
         isLoading: false,
         isPlaying: success,
-        duration: this.toneAudioService.getDuration()
+        duration: duration
       });
       
       return success;
@@ -208,24 +248,35 @@ class UnifiedAudioController {
         mode: 'overlay'
       };
       
-      // Ensure tone service is initialized
-      if (!this.toneAudioService) {
-        const { default: getToneAudioService } = await import('./toneAudioService');
-        this.toneAudioService = getToneAudioService();
+      // Ensure astro music engine is initialized
+      if (!this.astroMusicEngine) {
+        const { default: getAstroMusicEngine } = await import('./astroMusicEngine');
+        this.astroMusicEngine = getAstroMusicEngine();
       }
       
-      const noteEvents = this.toneAudioService.generateNoteEvents(mergedChartData, genre);
+      // Initialize the engine
+      await this.astroMusicEngine.initialize();
       
-      if (noteEvents.length === 0) {
+      // Generate music from merged chart data
+      const config = {
+        genre: genre,
+        duration: 60,
+        volume: 0.7,
+        tempo: 120
+      };
+      
+      const notes = this.astroMusicEngine.generateChartMusic(mergedChartData, config);
+      
+      if (notes.length === 0) {
         throw new Error('No musical events generated from overlay data');
       }
 
-      const success = await this.toneAudioService.playNoteEvents(noteEvents);
+      const success = await this.astroMusicEngine.playNotes(notes);
       
       this.updateStatus({
         isLoading: false,
         isPlaying: success,
-        duration: this.toneAudioService.getDuration()
+        duration: 60
       });
       
       return success;
@@ -246,8 +297,12 @@ class UnifiedAudioController {
     
     if (this.currentMode === 'api') {
       this.audioService.stop();
-    } else if (this.currentMode === 'realtime' && this.toneAudioService) {
-      this.toneAudioService.stop();
+    } else if (this.currentMode === 'realtime') {
+      if (this.astroMusicEngine) {
+        this.astroMusicEngine.stop();
+      } else if (this.toneAudioService) {
+        this.toneAudioService.stop();
+      }
     }
     
     this.updateStatus({
@@ -262,8 +317,12 @@ class UnifiedAudioController {
     
     if (this.currentMode === 'api') {
       this.audioService.pause();
-    } else if (this.currentMode === 'realtime' && this.toneAudioService) {
-      this.toneAudioService.pause();
+    } else if (this.currentMode === 'realtime') {
+      if (this.astroMusicEngine) {
+        this.astroMusicEngine.stop(); // Astro engine doesn't have pause, so stop
+      } else if (this.toneAudioService) {
+        this.toneAudioService.pause();
+      }
     }
     
     this.updateStatus({
@@ -275,8 +334,12 @@ class UnifiedAudioController {
   setVolume(volume: number): void {
     if (this.currentMode === 'api') {
       this.audioService.setVolume(volume);
-    } else if (this.currentMode === 'realtime' && this.toneAudioService) {
-      this.toneAudioService.setVolume(volume);
+    } else if (this.currentMode === 'realtime') {
+      if (this.astroMusicEngine) {
+        this.astroMusicEngine.setVolume(volume);
+      } else if (this.toneAudioService) {
+        this.toneAudioService.setVolume(volume);
+      }
     }
   }
 
@@ -298,6 +361,9 @@ class UnifiedAudioController {
     }
     if (this.toneAudioService) {
       this.toneAudioService.destroy();
+    }
+    if (this.astroMusicEngine) {
+      this.astroMusicEngine.destroy();
     }
   }
 }

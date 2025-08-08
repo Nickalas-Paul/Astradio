@@ -1,54 +1,24 @@
 services:
-  # Astradio API Service
   - type: web
     name: astradio-api
     env: node
     plan: free
-    buildCommand: |
-      cd apps/api
-      npm install
-      npm run build
-    startCommand: |
-      cd apps/api
-      npm start
-    healthCheckPath: /health
-    rootDir: apps/api
+    buildCommand: cd apps/api && npm install && npm run build
+    startCommand: cd apps/api && npm start
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
-        value: 3001
+        value: 10000
       - key: JWT_SECRET
-        value: astradio-production-jwt-secret-change-in-production
-      - key: JWT_EXPIRES_IN
-        value: 7d
+        generateValue: true
+      - key: SESSION_SECRET
+        generateValue: true
       - key: DATABASE_URL
         value: ./data/astradio.db
-      - key: RATE_LIMIT_WINDOW_MS
-        value: 900000
-      - key: RATE_LIMIT_MAX_REQUESTS
-        value: 100
-      - key: ENABLE_HTTPS
-        value: true
-      - key: TRUST_PROXY
-        value: true
-      - key: LOG_LEVEL
-        value: info
-      - key: ENABLE_REQUEST_LOGGING
-        value: true
-      - key: MAX_FILE_SIZE
-        value: 10485760
-      - key: ALLOWED_FILE_TYPES
-        value: audio/wav,audio/mp3,audio/ogg
-      - key: SESSION_SECRET
-        value: astradio-production-session-secret-change-in-production
-      - key: SESSION_MAX_AGE
-        value: 86400000
-      - key: ENABLE_DEBUG_MODE
-        value: false
-      - key: SKIP_EMAIL_VERIFICATION
-        value: true
-      - key: SWISS_EPHEMERIS_ENABLED
-        value: true
-      - key: SWISS_EPHEMERIS_PRECISION
-        value: high 
+      - key: CORS_ORIGIN
+        value: https://astradio.vercel.app
+      - key: AUDIO_OUTPUT_DIR
+        value: ./public/audio
+      - key: SWISS_EPHEMERIS_DATA_PATH
+        value: ./temp-swisseph 

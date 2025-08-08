@@ -167,14 +167,14 @@ export default function AnimatedChartWheel({
 
   return (
     <div className="relative w-full max-w-md mx-auto overflow-hidden">
-      {/* Audio Visualizer Overlay */}
-      <AudioVisualizerOverlay
+      {/* Audio Visualizer Overlay - Removed for compatibility */}
+      {/* <AudioVisualizerOverlay
         isPlaying={isPlaying}
         currentHouse={currentHouse}
         duration={duration}
         chart={chart}
         className="z-10"
-      />
+      /> */}
       
       <svg
         ref={svgRef}

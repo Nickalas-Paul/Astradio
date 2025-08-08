@@ -1,19 +1,28 @@
 {
   "name": "astradio",
   "version": "1.0.0",
-  "description": "Astrological Music Generator",
+  "description": "AI-powered astrological music generator",
+  "private": true,
   "workspaces": [
-    "packages/*",
-    "apps/*"
+    "apps/*",
+    "packages/*"
   ],
   "scripts": {
-    "dev": "cd apps/api && npm run dev",
+    "dev": "concurrently \"npm run dev:api\" \"npm run dev:web\"",
+    "dev:api": "cd apps/api && npm run dev",
+    "dev:web": "cd apps/web && npm run dev",
+    "build": "npm run build:api && npm run build:web",
+    "build:api": "cd apps/api && npm run build",
+    "build:web": "cd apps/web && npm run build",
     "start": "cd apps/api && npm start",
-    "build": "npm run build:packages && cd apps/api && npm run build",
-    "build:packages": "cd packages/types && npm run build && cd ../astro-core && npm run build && cd ../audio-mappings && npm run build",
-    "test": "echo \"No tests specified\" && exit 0"
+    "clean": "rm -rf node_modules apps/*/node_modules packages/*/node_modules",
+    "install:all": "npm install && npm run install:workspaces",
+    "install:workspaces": "npm install --workspaces"
   },
   "devDependencies": {
-    "typescript": "^5.0.0"
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

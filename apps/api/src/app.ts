@@ -10,6 +10,7 @@ import { audioEngine } from './core/audioEngine';
 import { AudioGenerator } from './core/audioGenerator';
 import { BirthData } from './types';
 import SwissEphemerisService from './services/swissEphemerisService';
+import AstroMusicService from './services/astroMusicService';
 
 // Phase 6.3: User System & Social Features
 import { initializeDatabase } from './database';
@@ -1617,4 +1618,105 @@ initializeDatabase().then(() => {
 }).catch(error => {
   console.error('Failed to initialize database:', error);
   process.exit(1);
+}); 
+
+// Initialize services
+const astroMusicService = new AstroMusicService();
+
+// Music generation endpoints
+app.post('/api/music/generate', async (req, res) => {
+  try {
+    const { chartData, genre = 'ambient', duration = 60, volume = 0.7 } = req.body;
+    
+    console.log('🎵 Music generation request:', { genre, duration, volume });
+    
+    const result = await astroMusicService.generateMusicFromChart({
+      chartData,
+      genre,
+      duration,
+      volume
+    });
+    
+    if (result.success) {
+      res.json({
+        success: true,
+        data: {
+          duration: result.duration,
+          genre: result.genre,
+          notes: result.notes,
+          message: 'Music generated successfully'
+        }
+      });
+    } else {
+      res.status(400).json({
+        success: false,
+        error: result.error || 'Music generation failed'
+      });
+    }
+  } catch (error) {
+    console.error('❌ Music generation endpoint error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error during music generation'
+    });
+  }
+});
+
+app.get('/api/music/daily', async (req, res) => {
+  try {
+    const { genre = 'ambient', duration = 60 } = req.query;
+    
+    console.log('🎵 Daily music request:', { genre, duration });
+    
+    const result = await astroMusicService.generateDailyMusic(
+      genre as string,
+      parseInt(duration as string)
+    );
+    
+    if (result.success) {
+      res.json({
+        success: true,
+        data: {
+          duration: result.duration,
+          genre: result.genre,
+          notes: result.notes,
+          message: 'Daily music generated successfully'
+        }
+      });
+    } else {
+      res.status(400).json({
+        success: false,
+        error: result.error || 'Daily music generation failed'
+      });
+    }
+  } catch (error) {
+    console.error('❌ Daily music endpoint error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error during daily music generation'
+    });
+  }
+});
+
+app.get('/api/music/genres', (req, res) => {
+  try {
+    const genres = astroMusicService.getAvailableGenres();
+    const genreInfo = genres.map(genre => ({
+      id: genre,
+      ...astroMusicService.getGenreInfo(genre)
+    }));
+    
+    res.json({
+      success: true,
+      data: {
+        genres: genreInfo
+      }
+    });
+  } catch (error) {
+    console.error('❌ Genres endpoint error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error fetching genres'
+    });
+  }
 }); 

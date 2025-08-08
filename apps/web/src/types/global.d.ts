@@ -3,6 +3,7 @@
 declare global {
   interface Window {
     Tone?: any;
+    webkitAudioContext?: typeof AudioContext;
   }
 }
 
