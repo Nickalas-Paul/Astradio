@@ -35,7 +35,8 @@ export {
 };
 
 // Export AudioGenerator
-export { AudioGenerator, AudioNote } from './audioGenerator';
+export { AudioGenerator } from './audioGenerator';
+export type { AudioNote } from './audioGenerator';
 
 // Export enhanced interpreter
 export { generateEnhancedInterpretation, CELESTIAL_INTERPRETATIONS } from './enhanced-interpreter';

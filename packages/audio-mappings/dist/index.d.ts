@@ -10,6 +10,7 @@ export { advancedPlaybackEngine };
 export { melodicGenerator };
 export { GENRE_CONFIGS, MOOD_TO_GENRE_MAPPINGS, getRandomGenre, getGenreFromMood, getAllGenres, getAllMoods };
 export { AudioGenerator } from './audioGenerator';
+export type { AudioNote } from './audioGenerator';
 export { generateEnhancedInterpretation, CELESTIAL_INTERPRETATIONS } from './enhanced-interpreter';
 export { enhancedCompositionEngine, EnhancedCompositionEngine } from './enhanced-composition';
 export type { HouseComposition, HouseMelody, HouseTransition, CompositionConfig, EnhancedComposition } from './enhanced-composition';
