@@ -1,29 +1,43 @@
+export interface SignData {
+  name: string;
+  element: 'Fire' | 'Earth' | 'Air' | 'Water';
+  degree: number;
+  modality: 'Cardinal' | 'Fixed' | 'Mutable';
+}
+
+export interface PlanetData {
+  longitude: number;
+  sign: SignData;
+  house: number;
+  retrograde: boolean;
+}
+
+export interface HouseData {
+  cusp_longitude: number;
+  sign: SignData;
+}
+
+export interface AspectData {
+  planet1: string;
+  planet2: string;
+  type: string;
+  angle: number;
+  harmonic: string;
+}
+
 export interface AstroChart {
   planets: {
-    [key: string]: {
-      sign: {
-        name: string;
-        element: string;
-      };
-      house: number;
-      degree: number;
-    };
+    [key: string]: PlanetData;
   };
   houses: {
-    [key: number]: {
-      sign: {
-        name: string;
-        element: string;
-      };
-      degree: number;
-    };
+    [key: string]: HouseData;
   };
-  aspects: Array<{
-    planet1: string;
-    planet2: string;
-    aspect: string;
-    orb: number;
-  }>;
+  metadata: {
+    conversion_method: string;
+    ayanamsa_correction: number;
+    birth_datetime: string;
+    coordinate_system: string;
+  };
 }
 
 export interface BirthData {
@@ -31,7 +45,7 @@ export interface BirthData {
   time: string;
   latitude: number;
   longitude: number;
-  timezone: string;
+  timezone: number;
 }
 
 export interface AudioGenerationRequest {
