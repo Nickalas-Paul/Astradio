@@ -20,7 +20,9 @@
     "install:workspaces": "npm install --workspaces"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "typescript": "^5.4.2",
+    "ts-node": "^10.9.1"
   },
   "engines": {
     "node": ">=18.0.0"
