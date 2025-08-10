@@ -2,12 +2,17 @@ services:
   - type: web
     name: astradio-api
     env: node
-    rootDir: apps/api
     buildCommand: npm ci && npm run build
     startCommand: npm start
+    rootDir: apps/api
     autoDeploy: true
+    buildFilter:
+      paths:
+        - apps/api/**
     envVars:
       - key: NODE_VERSION
         value: 18
       - key: NODE_ENV
         value: production
+      - key: PORT
+        value: 10000
