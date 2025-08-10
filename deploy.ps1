@@ -31,20 +31,30 @@ Write-Host "✅ CLIs ready" -ForegroundColor Green
 Write-Host "`n🎯 Deploying API to Render..." -ForegroundColor Yellow
 
 try {
-    render deploy --service-type=web --name="astradio-api" --root-dir="apps/api"
+    # Force Node runtime deployment
+    render deploy --service-type=web --name="astradio-api" --root-dir="apps/api" --env=node
     Write-Host "✅ API deployed to Render" -ForegroundColor Green
     $apiUrl = "https://astradio-api.onrender.com"
     Write-Host "🌐 API URL: $apiUrl" -ForegroundColor Cyan
 } catch {
-    Write-Host "❌ Render deployment failed" -ForegroundColor Red
-    Write-Host "Manual deployment required:" -ForegroundColor White
-    Write-Host "1. Go to https://dashboard.render.com" -ForegroundColor White
-    Write-Host "2. Create New Web Service" -ForegroundColor White
-    Write-Host "3. Connect GitHub repo: Nickalas-Paul/Astradio" -ForegroundColor White
-    Write-Host "4. Root Directory: apps/api" -ForegroundColor White
-    Write-Host "5. Build: npm ci; npm run build" -ForegroundColor White
-    Write-Host "6. Start: npm start" -ForegroundColor White
-    $apiUrl = Read-Host "Enter your Render API URL"
+    Write-Host "❌ Render CLI deployment failed - using manual deployment" -ForegroundColor Yellow
+    Write-Host "Creating new Node service via dashboard..." -ForegroundColor White
+    
+    # Open Render dashboard for manual deployment
+    Start-Process "https://dashboard.render.com/new/web-service"
+    
+    Write-Host "`n📋 Manual deployment steps:" -ForegroundColor Cyan
+    Write-Host "1. Connect GitHub repo: Nickalas-Paul/Astradio" -ForegroundColor White
+    Write-Host "2. Service Name: astradio-api" -ForegroundColor White
+    Write-Host "3. Root Directory: apps/api" -ForegroundColor White
+    Write-Host "4. Runtime: Node (NOT Docker)" -ForegroundColor White
+    Write-Host "5. Build Command: npm ci; npm run build" -ForegroundColor White
+    Write-Host "6. Start Command: npm start" -ForegroundColor White
+    Write-Host "7. Environment Variables:" -ForegroundColor White
+    Write-Host "   - NODE_ENV=production" -ForegroundColor White
+    Write-Host "   - PORT=10000" -ForegroundColor White
+    
+    $apiUrl = Read-Host "`nEnter your Render API URL (e.g., https://astradio-api.onrender.com)"
 }
 
 # Deploy Web to Vercel
@@ -60,13 +70,21 @@ try {
     Write-Host "🌐 Web URL: $webUrl" -ForegroundColor Cyan
 } catch {
     Pop-Location
-    Write-Host "❌ Vercel deployment failed" -ForegroundColor Red
-    Write-Host "Manual deployment required:" -ForegroundColor White
-    Write-Host "1. Go to https://vercel.com/dashboard" -ForegroundColor White
-    Write-Host "2. Import GitHub repo: Nickalas-Paul/Astradio" -ForegroundColor White
+    Write-Host "❌ Vercel CLI deployment failed - using manual deployment" -ForegroundColor Yellow
+    Write-Host "Creating new Vercel project via dashboard..." -ForegroundColor White
+    
+    # Open Vercel dashboard for manual deployment
+    Start-Process "https://vercel.com/new"
+    
+    Write-Host "`n📋 Manual deployment steps:" -ForegroundColor Cyan
+    Write-Host "1. Import GitHub repo: Nickalas-Paul/Astradio" -ForegroundColor White
+    Write-Host "2. Project Name: astradio-web" -ForegroundColor White
     Write-Host "3. Root Directory: apps/web" -ForegroundColor White
-    Write-Host "4. Environment: NEXT_PUBLIC_API_BASE_URL = $apiUrl" -ForegroundColor White
-    $webUrl = Read-Host "Enter your Vercel Web URL"
+    Write-Host "4. Framework: Next.js (auto-detected)" -ForegroundColor White
+    Write-Host "5. Environment Variables:" -ForegroundColor White
+    Write-Host "   - NEXT_PUBLIC_API_BASE_URL = $apiUrl" -ForegroundColor White
+    
+    $webUrl = Read-Host "`nEnter your Vercel Web URL (e.g., https://astradio-web.vercel.app)"
 }
 
 # Test deployment
