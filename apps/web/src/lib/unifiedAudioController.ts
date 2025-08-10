@@ -144,7 +144,7 @@ class UnifiedAudioController {
       console.log('🎵 Playing daily audio via API...');
       
       // Use environment variable for API URL, fallback to localhost for development
-      const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL;
       const apiUrl = `${apiBaseUrl}/api/audio/daily?genre=${genre}&duration=${duration}`;
       const success = await this.audioService.loadAudioFromAPI(apiUrl);
       

@@ -1,52 +1,89 @@
-# Docker Build Script for Astradio API
-# This script builds the Docker container using pnpm for proper workspace handling
+# Build and deploy Astradio with Docker
+# PowerShell script for Windows development
 
-Write-Host "🚀 Building Astradio API Docker Container..." -ForegroundColor Green
+Write-Host "🚀 Building Astradio Docker containers..." -ForegroundColor Cyan
 
 # Check if Docker is running
 try {
     docker version | Out-Null
     Write-Host "✅ Docker is running" -ForegroundColor Green
 } catch {
-    Write-Host "❌ Docker is not running. Please start Docker Desktop first." -ForegroundColor Red
+    Write-Host "❌ Docker is not running. Please start Docker Desktop." -ForegroundColor Red
     exit 1
 }
 
-# Build the Docker image
-Write-Host "📦 Building Docker image..." -ForegroundColor Yellow
-docker build -t astradio-api .
+# Check if pnpm is available
+try {
+    pnpm --version | Out-Null
+    Write-Host "✅ pnpm is available" -ForegroundColor Green
+} catch {
+    Write-Host "⚠️ pnpm not found. Installing..." -ForegroundColor Yellow
+    npm install -g pnpm
+}
 
-if ($LASTEXITCODE -eq 0) {
-    Write-Host "✅ Docker build successful!" -ForegroundColor Green
-    
-    # Test the container
-    Write-Host "🧪 Testing container..." -ForegroundColor Yellow
-    docker run --rm -d --name astradio-test -p 3001:3001 astradio-api
-    
-    # Wait for container to start
-    Start-Sleep -Seconds 10
-    
-    # Test the API
-    try {
-        $response = Invoke-WebRequest -Uri "http://localhost:3001/api/health" -TimeoutSec 10
-        if ($response.StatusCode -eq 200) {
-            Write-Host "✅ API is responding correctly!" -ForegroundColor Green
-        } else {
-            Write-Host "⚠️ API responded with status: $($response.StatusCode)" -ForegroundColor Yellow
-        }
-    } catch {
-        Write-Host "⚠️ Could not test API endpoint: $($_.Exception.Message)" -ForegroundColor Yellow
+# Clean previous builds
+Write-Host "🧹 Cleaning previous builds..." -ForegroundColor Yellow
+docker-compose down --volumes --remove-orphans
+docker system prune -f
+
+# Build packages locally first (for faster Docker builds)
+Write-Host "📦 Building packages..." -ForegroundColor Cyan
+pnpm install
+pnpm run build:packages
+
+# Build Docker images
+Write-Host "🔨 Building Docker images..." -ForegroundColor Cyan
+docker-compose build --no-cache
+
+# Start services
+Write-Host "🚀 Starting services..." -ForegroundColor Cyan
+docker-compose up -d
+
+# Wait for services to be healthy
+Write-Host "⏳ Waiting for services to start..." -ForegroundColor Yellow
+Start-Sleep -Seconds 30
+
+# Check health
+Write-Host "🏥 Checking service health..." -ForegroundColor Cyan
+
+try {
+    $apiHealth = Invoke-RestMethod -Uri "http://localhost:3001/health" -TimeoutSec 10
+    Write-Host "✅ API health check passed" -ForegroundColor Green
+    Write-Host "   Status: $($apiHealth.status)" -ForegroundColor Gray
+} catch {
+    Write-Host "❌ API health check failed" -ForegroundColor Red
+    Write-Host "   Error: $($_.Exception.Message)" -ForegroundColor Gray
+}
+
+try {
+    $webResponse = Invoke-WebRequest -Uri "http://localhost:3000" -TimeoutSec 10
+    if ($webResponse.StatusCode -eq 200) {
+        Write-Host "✅ Web frontend is responding" -ForegroundColor Green
     }
-    
-    # Stop the test container
-    docker stop astradio-test
-    docker rm astradio-test
-    
-    Write-Host "🎉 Docker build and test completed successfully!" -ForegroundColor Green
-    Write-Host "📋 To run the container: docker run -p 3001:3001 astradio-api" -ForegroundColor Cyan
-    Write-Host "📋 To use docker-compose: docker-compose up" -ForegroundColor Cyan
-    
-} else {
-    Write-Host "❌ Docker build failed!" -ForegroundColor Red
-    exit 1
+} catch {
+    Write-Host "❌ Web frontend is not responding" -ForegroundColor Red
+    Write-Host "   Error: $($_.Exception.Message)" -ForegroundColor Gray
 }
+
+# Show running containers
+Write-Host "`n📋 Running containers:" -ForegroundColor Cyan
+docker-compose ps
+
+# Show logs for any failed services
+$failedServices = docker-compose ps --filter "status=exited" --format "table {{.Service}}"
+if ($failedServices -ne "SERVICE") {
+    Write-Host "`n❌ Some services failed. Showing logs:" -ForegroundColor Red
+    docker-compose logs
+}
+
+Write-Host "`n🎉 Deployment complete!" -ForegroundColor Green
+Write-Host "🌐 Frontend: http://localhost:3000" -ForegroundColor Cyan
+Write-Host "🔧 API: http://localhost:3001" -ForegroundColor Cyan
+Write-Host "🎵 Daily Player: http://localhost:3000/daily-player" -ForegroundColor Cyan
+Write-Host "📊 Health Check: http://localhost:3001/health" -ForegroundColor Cyan
+
+Write-Host "`n🛠️ Useful commands:" -ForegroundColor Yellow
+Write-Host "   docker-compose logs -f          # Follow logs" -ForegroundColor Gray
+Write-Host "   docker-compose down             # Stop services" -ForegroundColor Gray
+Write-Host "   docker-compose restart          # Restart services" -ForegroundColor Gray
+Write-Host "   docker-compose exec api sh      # Enter API container" -ForegroundColor Gray

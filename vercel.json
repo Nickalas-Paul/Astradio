@@ -1,46 +1,12 @@
 {
   "version": 2,
-  "name": "astradio",
-  "builds": [
+  "projects": [
     {
-      "src": "apps/web/package.json",
-      "use": "@vercel/next"
-    },
-    {
-      "src": "apps/api/src/app.ts",
-      "use": "@vercel/node"
+      "name": "astradio-web",
+      "rootDirectory": "apps/web",
+      "buildCommand": "npm ci && npm run build",
+      "outputDirectory": ".next",
+      "framework": "nextjs"
     }
-  ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "apps/api/src/app.ts"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "apps/web/$1"
-    }
-  ],
-  "env": {
-    "NODE_ENV": "production"
-  },
-  "domains": ["astradio.io", "www.astradio.io"],
-  "redirects": [
-    {
-      "source": "/www.astradio.io",
-      "destination": "https://astradio.io",
-      "permanent": true
-    }
-  ],
-  "functions": {
-    "apps/api/src/app.ts": {
-      "maxDuration": 30
-    }
-  },
-  "regions": ["iad1"],
-  "public": true,
-  "github": {
-    "enabled": true,
-    "silent": true
-  }
-} 
+  ]
+}

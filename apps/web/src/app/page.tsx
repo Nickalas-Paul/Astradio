@@ -1,179 +1,457 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import ClientOnly from '../components/ClientOnly';
-import DailyChartPlayer from '../components/DailyChartPlayer';
-import AstrologicalWheel from '../components/AstrologicalWheel';
+import * as Tone from 'tone';
 
 interface Planet {
-  id: string;
-  name: string;
-  symbol: string;
-  angle: number;
-  color: string;
+  longitude: number;
+  sign: {
+    name: string;
+    degree: number;
+    element: string;
+    modality: string;
+  };
   house: number;
-  sign: string;
-  degree: number;
+  retrograde: boolean;
 }
 
-interface Aspect {
-  from: string;
-  to: string;
-  type: 'conjunction' | 'sextile' | 'square' | 'trine' | 'opposition';
-  angle: number;
-  orb: number;
+interface Chart {
+  planets: { [key: string]: Planet };
+  houses: { [key: string]: any };
+  metadata: {
+    conversion_method: string;
+    birth_datetime: string;
+    coordinate_system: string;
+  };
+}
+
+interface MusicEvent {
+  planet: string;
+  frequency: number;
+  startTime: number;
+  duration: number;
+  volume: number;
+  instrument: string;
 }
 
 export default function HomePage() {
-  const [chartData, setChartData] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [selectedGenre, setSelectedGenre] = useState('ambient');
+  const [chart, setChart] = useState<Chart | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [volume, setVolume] = useState(0.7);
+  const [genre, setGenre] = useState('ambient');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [audioStarted, setAudioStarted] = useState(false);
+
+  const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL;
 
   useEffect(() => {
-    loadTodayChart();
+    fetchTodaysChart();
   }, []);
 
-  const loadTodayChart = async () => {
+  const fetchTodaysChart = async () => {
+    setLoading(true);
+    setError(null);
     try {
-      setIsLoading(true);
       const today = new Date().toISOString().split('T')[0];
-      const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-      const response = await fetch(`${apiBaseUrl}/api/daily/${today}`);
+      const response = await fetch(`${API_URL}/api/daily/${today}`, {
+        cache: 'no-store'
+      });
       
       if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
+        throw new Error(`Failed to fetch chart: ${response.status}`);
       }
       
       const data = await response.json();
-      setChartData(data.data);
-      
-      console.log('📊 Today\'s chart loaded:', data.data);
+      setChart(data.data.chart);
     } catch (err) {
-      console.error('❌ Chart loading error:', err);
+      console.error('Error fetching chart:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch chart');
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const convertChartDataToPlanets = (chartData: any): Planet[] => {
-    if (!chartData?.chart?.planets) return [];
-    
-    const planetColors: Record<string, string> = {
-      'Sun': '#fbbf24',
-      'Moon': '#6b7280',
-      'Mercury': '#10b981',
-      'Venus': '#f59e0b',
-      'Mars': '#ef4444',
-      'Jupiter': '#8b5cf6',
-      'Saturn': '#64748b',
-      'Uranus': '#06b6d4',
-      'Neptune': '#3b82f6',
-      'Pluto': '#7c3aed'
-    };
-
-    return Object.entries(chartData.chart.planets).map(([name, data]: [string, any]) => ({
-      id: name,
-      name,
-      symbol: name,
-      angle: data.longitude,
-      color: planetColors[name] || '#6b7280',
-      house: data.house,
-      sign: data.sign.name,
-      degree: data.sign.degree
-    }));
+  const startAudioContext = async () => {
+    if (Tone.context.state !== 'running') {
+      await Tone.start();
+      setAudioStarted(true);
+    }
   };
 
-  const convertChartDataToAspects = (chartData: any): Aspect[] => {
-    if (!chartData?.chart?.aspects) return [];
-    
-    return chartData.chart.aspects.map((aspect: any) => ({
-      from: aspect.planet1,
-      to: aspect.planet2,
-      type: aspect.type as 'conjunction' | 'sextile' | 'square' | 'trine' | 'opposition',
-      angle: aspect.angle,
-      orb: 0
-    }));
+  const playMusic = async () => {
+    try {
+      await startAudioContext();
+      
+      if (!chart) return;
+
+      // Stop any existing audio
+      Tone.getTransport().stop();
+      Tone.getTransport().cancel();
+
+      // Generate music events from chart
+      const events = generateMusicEvents(chart, genre);
+      
+      // Set volume
+      Tone.getDestination().volume.value = Tone.gainToDb(volume);
+
+      // Create synths and schedule events
+      events.forEach((event) => {
+        const synth = new Tone.Synth({
+          oscillator: { type: event.instrument as any },
+          envelope: {
+            attack: 0.1,
+            decay: 0.2,
+            sustain: 0.7,
+            release: 0.8
+          }
+        }).toDestination();
+
+        Tone.getTransport().schedule((time) => {
+          synth.triggerAttackRelease(
+            Tone.Frequency(event.frequency, 'hz').toNote(),
+            event.duration,
+            time,
+            event.volume * volume
+          );
+        }, event.startTime);
+      });
+
+      Tone.getTransport().start();
+      setIsPlaying(true);
+    } catch (err) {
+      console.error('Error playing music:', err);
+      setError('Failed to play music');
+    }
   };
 
-  const planets = convertChartDataToPlanets(chartData);
-  const aspects = convertChartDataToAspects(chartData);
+  const stopMusic = () => {
+    Tone.getTransport().stop();
+    Tone.getTransport().cancel();
+    setIsPlaying(false);
+  };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-5xl font-bold text-white mb-4">
-            Astradio
-          </h1>
-          <p className="text-xl text-slate-300 max-w-2xl mx-auto mb-8">
-            AI-powered music generated from real astrological data using the Swiss Ephemeris API
-          </p>
-          
-          {/* Chart Wheel Section */}
-          <div className="mb-12">
-            <h2 className="text-3xl font-bold text-white mb-6">
-              What does your chart sound like?
-            </h2>
+  const generateMusicEvents = (chart: Chart, genre: string): MusicEvent[] => {
+    const events: MusicEvent[] = [];
+    const planets = Object.entries(chart.planets);
+    
+    planets.forEach(([name, data], index) => {
+      const baseFreq: { [key: string]: number } = {
+        Sun: 261.63, Moon: 293.66, Mercury: 329.63, Venus: 349.23, Mars: 392.00
+      };
+      
+      const frequency = (baseFreq[name] || 440) * (1 + (data.longitude / 360) * 0.5);
+      const startTime = index * 2; // 2 seconds apart
+      const duration = genre === 'techno' ? 1.5 : genre === 'ambient' ? 4 : 2;
+      
+      events.push({
+        planet: name,
+        frequency: Math.round(frequency),
+        startTime,
+        duration,
+        volume: 0.6,
+        instrument: genre === 'techno' ? 'square' : genre === 'ambient' ? 'sine' : 'triangle'
+      });
+    });
+    
+    return events;
+  };
+
+  const renderChartWheel = () => {
+    if (!chart) return null;
+
+    return (
+      <div className="chart-wheel">
+        <div className="wheel-container">
+          <svg width="300" height="300" viewBox="0 0 300 300">
+            {/* Outer circle */}
+            <circle cx="150" cy="150" r="140" fill="none" stroke="#333" strokeWidth="2" />
             
-            <ClientOnly>
-              {isLoading ? (
-                <div className="flex justify-center items-center h-96">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
-                </div>
-              ) : (
-                <div className="flex justify-center">
-                  <AstrologicalWheel
-                    planets={planets}
-                    aspects={aspects}
-                    size={400}
-                    selectedGenre={selectedGenre}
-                    onGenreChange={setSelectedGenre}
-                  />
-                </div>
-              )}
-            </ClientOnly>
-          </div>
+            {/* House lines */}
+            {Array.from({ length: 12 }, (_, i) => {
+              const angle = (i * 30) * (Math.PI / 180);
+              const x1 = 150 + 100 * Math.cos(angle);
+              const y1 = 150 + 100 * Math.sin(angle);
+              const x2 = 150 + 140 * Math.cos(angle);
+              const y2 = 150 + 140 * Math.sin(angle);
+              
+              return (
+                <line
+                  key={i}
+                  x1={x1}
+                  y1={y1}
+                  x2={x2}
+                  y2={y2}
+                  stroke="#666"
+                  strokeWidth="1"
+                />
+              );
+            })}
+            
+            {/* House numbers */}
+            {Array.from({ length: 12 }, (_, i) => {
+              const angle = ((i * 30) + 15) * (Math.PI / 180);
+              const x = 150 + 120 * Math.cos(angle);
+              const y = 150 + 120 * Math.sin(angle);
+              
+              return (
+                <text
+                  key={i}
+                  x={x}
+                  y={y}
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  fontSize="12"
+                  fill="#666"
+                >
+                  {i + 1}
+                </text>
+              );
+            })}
+            
+            {/* Planets */}
+            {Object.entries(chart.planets).map(([name, planet]) => {
+              const angle = (planet.longitude - 90) * (Math.PI / 180); // -90 to start at top
+              const x = 150 + 80 * Math.cos(angle);
+              const y = 150 + 80 * Math.sin(angle);
+              
+              const planetSymbols: { [key: string]: string } = {
+                Sun: '☉', Moon: '☽', Mercury: '☿', Venus: '♀', Mars: '♂'
+              };
+              
+              return (
+                <g key={name}>
+                  <circle cx={x} cy={y} r="8" fill="#4f46e5" />
+                  <text
+                    x={x}
+                    y={y}
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    fontSize="10"
+                    fill="white"
+                    fontWeight="bold"
+                  >
+                    {planetSymbols[name] || name[0]}
+                  </text>
+                </g>
+              );
+            })}
+          </svg>
         </div>
-
-        {/* Core Functionality */}
-        <ClientOnly>
-          <DailyChartPlayer />
-        </ClientOnly>
-
-        {/* Features */}
-        <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div className="bg-slate-800/50 backdrop-blur-md rounded-xl p-6 border border-emerald-500/20">
-            <h3 className="text-xl font-semibold text-white mb-3">🌅 Daily Charts</h3>
-            <p className="text-slate-300">
-              Generate music based on today's planetary positions and transits
-            </p>
-          </div>
-          
-          <div className="bg-slate-800/50 backdrop-blur-md rounded-xl p-6 border border-emerald-500/20">
-            <h3 className="text-xl font-semibold text-white mb-3">🎵 Multiple Genres</h3>
-            <p className="text-slate-300">
-              Switch between ambient, techno, world, and hip-hop styles
-            </p>
-          </div>
-          
-          <div className="bg-slate-800/50 backdrop-blur-md rounded-xl p-6 border border-emerald-500/20">
-            <h3 className="text-xl font-semibold text-white mb-3">🔮 Swiss Ephemeris</h3>
-            <p className="text-slate-300">
-              Precise astrological calculations using professional-grade ephemeris data
-            </p>
-          </div>
-        </div>
-
-        {/* API Status */}
-        <div className="mt-12 text-center">
-          <p className="text-slate-400 text-sm">
-            Backend API: <span className="text-emerald-400">Ready</span> | 
-            Audio Engine: <span className="text-emerald-400">Active</span> | 
-            Swiss Ephemeris: <span className="text-emerald-400">Connected</span>
-          </p>
+        
+        <div className="planet-list">
+          {Object.entries(chart.planets).map(([name, planet]) => (
+            <div key={name} className="planet-info">
+              <strong>{name}</strong>: {planet.sign.name} {planet.sign.degree}°
+              {planet.retrograde && ' ℞'}
+            </div>
+          ))}
         </div>
       </div>
+    );
+  };
+
+  return (
+    <div className="container">
+      <header className="header">
+        <h1>🎵 Astradio - Daily Chart Music</h1>
+        <p>Today&apos;s planetary positions converted to music</p>
+      </header>
+
+      {error && (
+        <div className="error">
+          ❌ {error}
+          <button onClick={() => setError(null)}>×</button>
+        </div>
+      )}
+
+      <div className="main-content">
+        <div className="chart-section">
+          <h2>Today&apos;s Chart</h2>
+          {loading ? (
+            <div className="loading">Loading chart...</div>
+          ) : chart ? (
+            renderChartWheel()
+          ) : (
+            <div className="error">No chart data available</div>
+          )}
+        </div>
+
+        <div className="controls-section">
+          <h2>Music Player</h2>
+          
+          <div className="genre-selector">
+            <label>Genre:</label>
+            <select value={genre} onChange={(e) => setGenre(e.target.value)}>
+              <option value="ambient">Ambient</option>
+              <option value="techno">Techno</option>
+              <option value="world">World</option>
+              <option value="hiphop">Hip-Hop</option>
+            </select>
+          </div>
+
+          <div className="playback-controls">
+            <button
+              onClick={isPlaying ? stopMusic : playMusic}
+              disabled={!chart || loading}
+              className="play-button"
+            >
+              {isPlaying ? '⏹️ Stop' : '▶️ Play'}
+            </button>
+          </div>
+
+          <div className="volume-control">
+            <label>Volume:</label>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.1"
+              value={volume}
+              onChange={(e) => setVolume(parseFloat(e.target.value))}
+            />
+            <span>{Math.round(volume * 100)}%</span>
+          </div>
+
+          {!audioStarted && (
+            <div className="audio-note">
+              💡 Click Play to start audio (browser requires user interaction)
+            </div>
+          )}
+        </div>
+      </div>
+
+      <style jsx>{`
+        .container {
+          max-width: 1200px;
+          margin: 0 auto;
+          padding: 20px;
+          font-family: system-ui, -apple-system, sans-serif;
+        }
+
+        .header {
+          text-align: center;
+          margin-bottom: 40px;
+        }
+
+        .header h1 {
+          color: #4f46e5;
+          margin-bottom: 10px;
+        }
+
+        .error {
+          background: #fee2e2;
+          border: 1px solid #fecaca;
+          padding: 15px;
+          border-radius: 8px;
+          margin-bottom: 20px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+
+        .error button {
+          background: none;
+          border: none;
+          font-size: 18px;
+          cursor: pointer;
+        }
+
+        .loading {
+          text-align: center;
+          padding: 40px;
+          color: #666;
+        }
+
+        .main-content {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 40px;
+          align-items: start;
+        }
+
+        @media (max-width: 768px) {
+          .main-content {
+            grid-template-columns: 1fr;
+          }
+        }
+
+        .chart-section, .controls-section {
+          background: #f8fafc;
+          padding: 30px;
+          border-radius: 12px;
+          border: 1px solid #e2e8f0;
+        }
+
+        .wheel-container {
+          display: flex;
+          justify-content: center;
+          margin-bottom: 20px;
+        }
+
+        .planet-list {
+          max-height: 200px;
+          overflow-y: auto;
+        }
+
+        .planet-info {
+          padding: 8px 0;
+          border-bottom: 1px solid #e2e8f0;
+          font-size: 14px;
+        }
+
+        .genre-selector, .volume-control {
+          margin-bottom: 20px;
+        }
+
+        .genre-selector label, .volume-control label {
+          display: block;
+          margin-bottom: 8px;
+          font-weight: 500;
+        }
+
+        .genre-selector select {
+          width: 100%;
+          padding: 8px 12px;
+          border: 1px solid #d1d5db;
+          border-radius: 6px;
+          font-size: 16px;
+        }
+
+        .play-button {
+          background: #4f46e5;
+          color: white;
+          border: none;
+          padding: 15px 30px;
+          border-radius: 8px;
+          font-size: 18px;
+          cursor: pointer;
+          width: 100%;
+          margin-bottom: 20px;
+        }
+
+        .play-button:hover {
+          background: #4338ca;
+        }
+
+        .play-button:disabled {
+          background: #9ca3af;
+          cursor: not-allowed;
+        }
+
+        .volume-control input {
+          width: 100%;
+          margin-bottom: 8px;
+        }
+
+        .audio-note {
+          background: #dbeafe;
+          padding: 12px;
+          border-radius: 6px;
+          font-size: 14px;
+          color: #1e40af;
+        }
+      `}</style>
     </div>
   );
-} 
+}

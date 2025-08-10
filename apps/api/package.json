@@ -1,11 +1,12 @@
 {
   "name": "@astradio/api",
   "private": true,
-  "type": "module",
-  "main": "dist/app.js",
+
+  "main": "dist/app-production.js",
   "scripts": {
-    "build": "tsc",
-    "start": "node dist/app.js",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/app-production.js",
+    "start:min": "node dist/app-minimal.js",
     "dev": "nodemon src/app.ts",
     "postinstall": "node scripts/check-swisseph.js"
   },

@@ -1,38 +1,76 @@
 version: '3.8'
 
 services:
+  # API Backend
   api:
     build:
       context: .
       dockerfile: Dockerfile
+      target: api-production
     ports:
       - "3001:3001"
     environment:
       - NODE_ENV=production
       - PORT=3001
+      - DATABASE_URL=/app/data/astradio.db
+      - SWISS_EPHEMERIS_DATA_PATH=/app/temp-swisseph
+      - JWT_SECRET=${JWT_SECRET:-astradio-production-jwt-secret}
+      - SESSION_SECRET=${SESSION_SECRET:-astradio-production-session-secret}
+      - FRONTEND_URL=http://localhost:3000
     volumes:
-      # Optional: mount source code for development
-      # - .:/usr/src/app
-      # - /usr/src/app/node_modules
+      - api_data:/app/data
+      - audio_files:/app/public/audio
+    networks:
+      - astradio-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3001/api/health"]
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1));"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
 
-  # Optional: Add a database service if needed in the future
-  # database:
-  #   image: postgres:15
-  #   environment:
-  #     POSTGRES_DB: astradio
-  #     POSTGRES_USER: astradio
-  #     POSTGRES_PASSWORD: astradio_password
-  #   volumes:
-  #     - postgres_data:/var/lib/postgresql/data
-  #   ports:
-  #     - "5432:5432"
+  # Web Frontend
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: web-production
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_TELEMETRY_DISABLED=1
+      - NEXT_PUBLIC_API_URL=http://localhost:3001
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - astradio-network
+    restart: unless-stopped
 
-# volumes:
-#   postgres_data:
+  # Nginx Reverse Proxy (optional)
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - api
+      - web
+    networks:
+      - astradio-network
+    restart: unless-stopped
+
+volumes:
+  api_data:
+    driver: local
+  audio_files:
+    driver: local
+
+networks:
+  astradio-network:
+    driver: bridge

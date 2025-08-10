@@ -2,25 +2,12 @@ services:
   - type: web
     name: astradio-api
     env: node
-    plan: free
-    region: ohio
     rootDir: apps/api
     buildCommand: npm ci && npm run build
     startCommand: npm start
+    autoDeploy: true
     envVars:
+      - key: NODE_VERSION
+        value: 18
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: 10000
-      - key: JWT_SECRET
-        generateValue: true
-      - key: SESSION_SECRET
-        generateValue: true
-      - key: DATABASE_URL
-        value: ./data/astradio.db
-      - key: CORS_ORIGIN
-        value: https://astradio.vercel.app
-      - key: AUDIO_OUTPUT_DIR
-        value: ./public/audio
-      - key: SWISS_EPHEMERIS_DATA_PATH
-        value: ./temp-swisseph 

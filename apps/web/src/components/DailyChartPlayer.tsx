@@ -1,178 +1,194 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import getUnifiedAudioController from '../lib/unifiedAudioController';
+import React, { useState, useEffect, useCallback } from 'react';
+import { FrontendAstroMusicEngine } from '../lib/astroMusicEngine';
 
-const GENRES = [
-  { id: 'ambient', name: 'Ambient', description: 'Peaceful, atmospheric sounds' },
-  { id: 'techno', name: 'Techno', description: 'Electronic, rhythmic beats' },
-  { id: 'world', name: 'World', description: 'Global, cultural influences' },
-  { id: 'hip-hop', name: 'Hip-Hop', description: 'Urban, rhythmic patterns' }
-];
+interface DailyChartPlayerProps {
+  className?: string;
+  defaultGenre?: 'ambient' | 'techno' | 'world' | 'hip-hop';
+  showGenreSelector?: boolean;
+  showVolumeControl?: boolean;
+  autoLoad?: boolean;
+}
 
-export default function DailyChartPlayer() {
-  const [isLoading, setIsLoading] = useState(false);
+export const DailyChartPlayer: React.FC<DailyChartPlayerProps> = ({
+  className = '',
+  defaultGenre = 'ambient',
+  showGenreSelector = true,
+  showVolumeControl = true,
+  autoLoad = true
+}) => {
+  const [musicEngine, setMusicEngine] = useState<FrontendAstroMusicEngine | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [currentGenre, setCurrentGenre] = useState('ambient');
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [error, setError] = useState<string | null>(null);
-  const [chartData, setChartData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const [volume, setVolume] = useState(0.7);
+  const [selectedGenre, setSelectedGenre] = useState<'ambient' | 'techno' | 'world' | 'hip-hop'>(defaultGenre);
+  const [error, setError] = useState<string | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
 
+  // Initialize music engine
   useEffect(() => {
-    // Initialize audio controller
-    const audioController = getUnifiedAudioController();
-    
-    // Set up status callback
-    audioController.onStatusChangeCallback((status) => {
-      setIsLoading(status.isLoading);
-      setIsPlaying(status.isPlaying);
-      setCurrentTime(status.currentTime);
-      setDuration(status.duration);
-      setError(status.error);
-    });
+    const initEngine = async () => {
+      try {
+        const engine = new FrontendAstroMusicEngine();
+        await engine.initialize();
+        setMusicEngine(engine);
+        setIsInitialized(true);
+        
+        if (autoLoad) {
+          await loadDaily(engine, selectedGenre);
+        }
+      } catch (err) {
+        console.error('Failed to initialize music engine:', err);
+        setError('Failed to initialize audio engine');
+      }
+    };
 
-    // Load today's chart on mount
-    loadTodayChart();
+    initEngine();
 
     return () => {
-      audioController.destroy();
+      if (musicEngine) {
+        musicEngine.dispose();
+      }
     };
   }, []);
 
-  const loadTodayChart = async () => {
+  // Load daily chart
+  const loadDaily = useCallback(async (engine: FrontendAstroMusicEngine, genre: typeof selectedGenre) => {
     try {
       setIsLoading(true);
       setError(null);
-      
-      const today = new Date().toISOString().split('T')[0];
-      const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-      const response = await fetch(`${apiBaseUrl}/api/daily/${today}`);
-      
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      setChartData(data.data);
-      
-      console.log('📊 Today\'s chart loaded:', data.data);
+      await engine.loadDailyChart(genre);
+      console.log('🎵 Daily chart loaded successfully');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load chart');
-      console.error('❌ Chart loading error:', err);
+      console.error('Failed to load daily chart:', err);
+      setError('Failed to load daily chart');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const playDailyAudio = async () => {
+  // Handle play/pause
+  const handlePlayPause = useCallback(async () => {
+    if (!musicEngine) return;
+
     try {
-      setIsLoading(true);
-      setError(null);
-      
-      const audioController = getUnifiedAudioController();
-      
-      if (chartData && chartData.chart) {
-        // Use real-time chart-based music generation
-        const success = await audioController.playChartAudio(chartData.chart, currentGenre, 60);
-        
-        if (!success) {
-          throw new Error('Failed to start chart-based audio playback');
-        }
-        
-        console.log(`🎵 Playing chart-based music in ${currentGenre} genre`);
+      if (isPlaying) {
+        musicEngine.pause();
+        setIsPlaying(false);
       } else {
-        // Fallback to API-based audio
-        const success = await audioController.playDailyAudio(currentGenre, 60);
-        
-        if (!success) {
-          throw new Error('Failed to start audio playback');
-        }
-        
-        console.log(`🎵 Playing daily audio in ${currentGenre} genre`);
+        await musicEngine.play();
+        setIsPlaying(true);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to play audio');
-      console.error('❌ Audio playback error:', err);
-    } finally {
-      setIsLoading(false);
+      console.error('Failed to toggle playback:', err);
+      setError('Playback failed');
     }
-  };
+  }, [musicEngine, isPlaying]);
 
-  const stopAudio = () => {
-    const audioController = getUnifiedAudioController();
-    audioController.stop();
-    console.log('⏹️ Audio stopped');
-  };
+  // Handle stop
+  const handleStop = useCallback(() => {
+    if (!musicEngine) return;
 
-  const handleVolumeChange = (newVolume: number) => {
+    musicEngine.stop();
+    setIsPlaying(false);
+  }, [musicEngine]);
+
+  // Handle volume change
+  const handleVolumeChange = useCallback((newVolume: number) => {
     setVolume(newVolume);
-    const audioController = getUnifiedAudioController();
-    audioController.setVolume(newVolume);
-  };
+    if (musicEngine) {
+      musicEngine.setVolume(newVolume);
+    }
+  }, [musicEngine]);
 
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
+  // Handle genre change
+  const handleGenreChange = useCallback(async (genre: typeof selectedGenre) => {
+    if (!musicEngine) return;
+
+    try {
+      setSelectedGenre(genre);
+      setIsPlaying(false);
+      musicEngine.stop();
+      await loadDaily(musicEngine, genre);
+    } catch (err) {
+      console.error('Failed to change genre:', err);
+      setError('Failed to change genre');
+    }
+  }, [musicEngine, loadDaily]);
+
+  const genres = FrontendAstroMusicEngine.getAvailableGenres();
 
   return (
-    <div className="bg-slate-900/50 backdrop-blur-md rounded-2xl p-8 border border-emerald-500/20 max-w-4xl mx-auto">
-      <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold text-white mb-2">Today's Astrological Music</h2>
-        <p className="text-slate-300">
-          Experience music generated from today's planetary positions using real-time astrological algorithms
+    <div className={`daily-chart-player ${className}`}>
+      <div className="player-header">
+        <h3 className="player-title">Today's Astrological Music</h3>
+        <p className="player-subtitle">
+          Generated from current planetary positions
         </p>
       </div>
 
-      {/* Chart Info */}
-      {chartData && (
-        <div className="mb-6 p-4 bg-slate-800/50 rounded-lg">
-          <h3 className="text-lg font-semibold text-white mb-2">Today's Chart</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-            {Object.entries(chartData.chart?.planets || {}).slice(0, 4).map(([planet, data]: [string, any]) => (
-              <div key={planet} className="text-center">
-                <div className="text-emerald-400 font-medium">{planet}</div>
-                <div className="text-slate-300">{data.sign?.name || 'Unknown'}</div>
-              </div>
-            ))}
-          </div>
-          {chartData.chart?.aspects && (
-            <div className="mt-3 text-center text-xs text-slate-400">
-              {chartData.chart.aspects.length} aspects detected
-            </div>
-          )}
+      {error && (
+        <div className="error-message">
+          <span>⚠️ {error}</span>
+          <button 
+            onClick={() => setError(null)}
+            className="error-dismiss"
+          >
+            ×
+          </button>
         </div>
       )}
 
-      {/* Genre Selection */}
-      <div className="mb-6">
-        <h3 className="text-lg font-semibold text-white mb-3">Choose Genre</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {GENRES.map((genre) => (
-            <button
-              key={genre.id}
-              onClick={() => setCurrentGenre(genre.id)}
-              className={`p-3 rounded-lg text-sm font-medium transition-all ${
-                currentGenre === genre.id
-                  ? 'bg-emerald-600 text-white'
-                  : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-              }`}
-            >
-              <div className="font-semibold">{genre.name}</div>
-              <div className="text-xs opacity-75">{genre.description}</div>
-            </button>
-          ))}
+      {showGenreSelector && (
+        <div className="genre-selector">
+          <label className="genre-label">Genre:</label>
+          <select 
+            value={selectedGenre}
+            onChange={(e) => handleGenreChange(e.target.value as typeof selectedGenre)}
+            disabled={isLoading}
+            className="genre-select"
+          >
+            {genres.map(genre => (
+              <option key={genre.id} value={genre.id}>
+                {genre.name}
+              </option>
+            ))}
+          </select>
         </div>
+      )}
+
+      <div className="player-controls">
+        <button
+          onClick={handlePlayPause}
+          disabled={!isInitialized || isLoading}
+          className={`play-button ${isPlaying ? 'playing' : ''}`}
+        >
+          {isLoading ? (
+            <span className="loading-spinner">⟳</span>
+          ) : isPlaying ? (
+            <span>⏸️</span>
+          ) : (
+            <span>▶️</span>
+          )}
+          <span className="button-text">
+            {isLoading ? 'Loading...' : isPlaying ? 'Pause' : 'Play'}
+          </span>
+        </button>
+
+        <button
+          onClick={handleStop}
+          disabled={!isInitialized || isLoading}
+          className="stop-button"
+        >
+          <span>⏹️</span>
+          <span className="button-text">Stop</span>
+        </button>
       </div>
 
-      {/* Volume Control */}
-      <div className="mb-6">
-        <h3 className="text-lg font-semibold text-white mb-3">Volume</h3>
-        <div className="flex items-center gap-4">
-          <span className="text-slate-300 text-sm">0%</span>
+      {showVolumeControl && (
+        <div className="volume-control">
+          <label className="volume-label">Volume:</label>
           <input
             type="range"
             min="0"
@@ -180,90 +196,185 @@ export default function DailyChartPlayer() {
             step="0.1"
             value={volume}
             onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
-            className="flex-1 h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer slider"
+            className="volume-slider"
           />
-          <span className="text-slate-300 text-sm">{Math.round(volume * 100)}%</span>
-        </div>
-      </div>
-
-      {/* Audio Controls */}
-      <div className="mb-6">
-        <div className="flex justify-center gap-4 mb-4">
-          <button
-            onClick={playDailyAudio}
-            disabled={isLoading}
-            className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 rounded-lg text-white font-medium flex items-center gap-2"
-          >
-            {isLoading ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                Loading...
-              </>
-            ) : (
-              <>
-                <span>▶️</span>
-                Play Today's Music
-              </>
-            )}
-          </button>
-          
-          <button
-            onClick={stopAudio}
-            disabled={!isPlaying}
-            className="px-6 py-3 bg-red-600 hover:bg-red-700 disabled:opacity-50 rounded-lg text-white font-medium"
-          >
-            ⏹️ Stop
-          </button>
-        </div>
-
-        {/* Progress Bar */}
-        {isPlaying && (
-          <div className="w-full bg-slate-700 rounded-full h-2 mb-2">
-            <div 
-              className="bg-emerald-500 h-2 rounded-full transition-all duration-100"
-              style={{ width: `${(currentTime / duration) * 100}%` }}
-            ></div>
-          </div>
-        )}
-
-        {/* Time Display */}
-        {isPlaying && (
-          <div className="text-center text-sm text-slate-300">
-            {formatTime(currentTime)} / {formatTime(duration)}
-          </div>
-        )}
-      </div>
-
-      {/* Error Display */}
-      {error && (
-        <div className="p-4 bg-red-900/50 border border-red-500/20 rounded-lg">
-          <div className="text-red-400 font-medium">Error</div>
-          <div className="text-red-300 text-sm">{error}</div>
+          <span className="volume-value">{Math.round(volume * 100)}%</span>
         </div>
       )}
 
-      {/* Status */}
-      <div className="text-center text-sm text-slate-400">
-        {isPlaying ? (
-          <span className="text-emerald-400">🎵 Playing {currentGenre} music from today's chart</span>
-        ) : isLoading ? (
-          <span className="text-yellow-400">⏳ Loading...</span>
-        ) : (
-          <span>Ready to play today's astrological music</span>
-        )}
+      <div className="player-info">
+        <p className="current-genre">
+          <strong>Current:</strong> {genres.find(g => g.id === selectedGenre)?.name || selectedGenre}
+        </p>
+        <p className="genre-description">
+          {genres.find(g => g.id === selectedGenre)?.description}
+        </p>
       </div>
 
-      {/* Technical Info */}
-      <div className="mt-6 p-3 bg-slate-800/30 rounded-lg">
-        <h4 className="text-sm font-semibold text-white mb-2">Technical Details</h4>
-        <div className="text-xs text-slate-400 space-y-1">
-          <div>• Real-time music generation using Tone.js</div>
-          <div>• Planetary positions converted to musical frequencies</div>
-          <div>• Zodiac signs influence rhythm and harmony</div>
-          <div>• Astrological aspects create harmonic relationships</div>
-          <div>• Houses determine volume and tempo characteristics</div>
-        </div>
-      </div>
+      <style jsx>{`
+        .daily-chart-player {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          border-radius: 12px;
+          padding: 24px;
+          color: white;
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+          max-width: 400px;
+          margin: 0 auto;
+        }
+
+        .player-header {
+          text-align: center;
+          margin-bottom: 20px;
+        }
+
+        .player-title {
+          font-size: 1.5rem;
+          font-weight: bold;
+          margin: 0 0 8px 0;
+        }
+
+        .player-subtitle {
+          font-size: 0.9rem;
+          opacity: 0.8;
+          margin: 0;
+        }
+
+        .error-message {
+          background: rgba(255, 107, 107, 0.2);
+          border: 1px solid rgba(255, 107, 107, 0.4);
+          border-radius: 8px;
+          padding: 12px;
+          margin-bottom: 16px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+
+        .error-dismiss {
+          background: none;
+          border: none;
+          color: white;
+          font-size: 1.2rem;
+          cursor: pointer;
+          padding: 0;
+          margin: 0;
+        }
+
+        .genre-selector {
+          margin-bottom: 20px;
+        }
+
+        .genre-label {
+          display: block;
+          font-size: 0.9rem;
+          margin-bottom: 8px;
+          opacity: 0.9;
+        }
+
+        .genre-select {
+          width: 100%;
+          padding: 8px 12px;
+          border-radius: 6px;
+          border: 1px solid rgba(255, 255, 255, 0.3);
+          background: rgba(255, 255, 255, 0.1);
+          color: white;
+          font-size: 0.9rem;
+        }
+
+        .genre-select option {
+          background: #333;
+          color: white;
+        }
+
+        .player-controls {
+          display: flex;
+          gap: 12px;
+          justify-content: center;
+          margin-bottom: 20px;
+        }
+
+        .play-button, .stop-button {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 12px 16px;
+          border: none;
+          border-radius: 8px;
+          background: rgba(255, 255, 255, 0.2);
+          color: white;
+          font-size: 0.9rem;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+
+        .play-button:hover, .stop-button:hover {
+          background: rgba(255, 255, 255, 0.3);
+          transform: translateY(-1px);
+        }
+
+        .play-button:disabled, .stop-button:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+          transform: none;
+        }
+
+        .play-button.playing {
+          background: rgba(255, 193, 7, 0.3);
+        }
+
+        .loading-spinner {
+          animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+
+        .volume-control {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          margin-bottom: 20px;
+        }
+
+        .volume-label {
+          font-size: 0.9rem;
+          opacity: 0.9;
+          min-width: 60px;
+        }
+
+        .volume-slider {
+          flex: 1;
+          height: 4px;
+          border-radius: 2px;
+          background: rgba(255, 255, 255, 0.3);
+          outline: none;
+          cursor: pointer;
+        }
+
+        .volume-value {
+          font-size: 0.8rem;
+          opacity: 0.8;
+          min-width: 40px;
+          text-align: right;
+        }
+
+        .player-info {
+          border-top: 1px solid rgba(255, 255, 255, 0.2);
+          padding-top: 16px;
+        }
+
+        .current-genre, .genre-description {
+          margin: 0 0 8px 0;
+          font-size: 0.85rem;
+          line-height: 1.4;
+        }
+
+        .genre-description {
+          opacity: 0.8;
+        }
+      `}</style>
     </div>
   );
-}
+};

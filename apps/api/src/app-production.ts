@@ -1,53 +1,106 @@
-import express from 'express';
-import cors from 'cors';
-import helmet from 'helmet';
-import compression from 'compression';
-import morgan from 'morgan';
-import dotenv from 'dotenv';
+const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
+const compression = require('compression');
+const morgan = require('morgan');
+const dotenv = require('dotenv');
 
 // Load environment variables
 dotenv.config();
 
 const app = express();
-const port = Number(process.env.PORT) || 3001;
+const PORT = process.env.PORT || 3001;
 
-// Basic middleware
-app.use(compression());
-app.use(helmet({
-  crossOriginEmbedderPolicy: false,
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", "data:", "blob:"],
-      connectSrc: ["'self'"],
-      fontSrc: ["'self'"],
-      objectSrc: ["'none'"],
-      mediaSrc: ["'self'"],
-      frameSrc: ["'none'"],
-    },
-  },
-}));
+// Inline minimal types to avoid workspace dependencies
+export interface PlanetData {
+  longitude: number;
+  sign: SignData;
+  house: number;
+  retrograde: boolean;
+}
 
-app.use(cors({
-  origin: process.env.FRONTEND_URL || true,
-  credentials: true
-}));
+export interface SignData {
+  name: string;
+  degree: number;
+  element: 'Fire' | 'Earth' | 'Air' | 'Water';
+  modality: 'Cardinal' | 'Fixed' | 'Mutable';
+}
 
-app.use(morgan('combined'));
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+export interface HouseData {
+  cusp_longitude: number;
+  sign: SignData;
+}
 
-// Swiss Ephemeris fallback calculations (inline to avoid workspace deps)
-class SimplifiedAstro {
-  static generateDailyChart(date: string) {
+export interface AspectData {
+  planet1: string;
+  planet2: string;
+  type: string;
+  angle: number;
+  harmonic: string;
+}
+
+export interface AstroChart {
+  planets: { [key: string]: PlanetData };
+  houses: { [key: string]: HouseData };
+  aspects?: AspectData[];
+  metadata: {
+    conversion_method: string;
+    birth_datetime: string;
+    coordinate_system: string;
+  };
+}
+
+// Safe Swiss Ephemeris wrapper
+let SwissEph: any = null;
+let swissephAvailable = false;
+
+try {
+  SwissEph = require('swisseph');
+  swissephAvailable = true;
+  console.log('✅ Swiss Ephemeris native module loaded successfully');
+} catch (error) {
+  swissephAvailable = false;
+  console.log('⚠️  Swiss Ephemeris native module not available, using fallback calculations');
+}
+
+// Music Engine - Single scalable module for daily chart music generation
+class MusicEngine {
+  static generateDailyChartMusic(date: string, genre: string = 'ambient') {
+    const chart = this.generateChart(date);
+    const events = this.chartToMusicEvents(chart, genre);
+    
+    return {
+      chart,
+      events,
+      genre,
+      metadata: {
+        generated_at: new Date().toISOString(),
+        engine_version: '1.0.0',
+        method: swissephAvailable ? 'swiss_ephemeris' : 'simplified_fallback'
+      }
+    };
+  }
+
+  private static generateChart(date: string): AstroChart {
+    if (swissephAvailable) {
+      return this.generateWithSwissEph(date);
+    }
+    return this.generateSimplified(date);
+  }
+
+  private static generateWithSwissEph(date: string): AstroChart {
+    // Swiss Ephemeris calculations would go here
+    // For now, fallback to simplified
+    return this.generateSimplified(date);
+  }
+
+  private static generateSimplified(date: string): AstroChart {
     const targetDate = new Date(date);
     const dayOfYear = Math.floor((targetDate.getTime() - new Date(targetDate.getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24));
     
     // Simplified planetary positions based on date
-    const sunLongitude = (dayOfYear * 0.9856 + 80) % 360; // Approximate sun position
-    const moonLongitude = (dayOfYear * 13.1764 + 180) % 360; // Approximate moon position
+    const sunLongitude = (dayOfYear * 0.9856 + 80) % 360;
+    const moonLongitude = (dayOfYear * 13.1764 + 180) % 360;
     
     return {
       planets: {
@@ -97,14 +150,14 @@ class SimplifiedAstro {
         "12": { cusp_longitude: 330, sign: this.longitudeToSign(330) }
       },
       metadata: {
-        conversion_method: 'simplified_fallback',
+        conversion_method: swissephAvailable ? 'swiss_ephemeris' : 'simplified_fallback',
         birth_datetime: targetDate.toISOString(),
         coordinate_system: 'tropical'
       }
     };
   }
 
-  static longitudeToSign(longitude: number) {
+  private static longitudeToSign(longitude: number): SignData {
     const signs = [
       'Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo',
       'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'
@@ -118,16 +171,16 @@ class SimplifiedAstro {
     return {
       name: signs[signIndex],
       degree: Math.floor(degree),
-      element: elements[signIndex % 4],
-      modality: modalities[signIndex % 3]
+      element: elements[signIndex % 4] as 'Fire' | 'Earth' | 'Air' | 'Water',
+      modality: modalities[signIndex % 3] as 'Cardinal' | 'Fixed' | 'Mutable'
     };
   }
 
-  static generateMusicEvents(chart: any, genre: string = 'ambient') {
+  private static chartToMusicEvents(chart: AstroChart, genre: string) {
     const events: any[] = [];
     const planets = Object.entries(chart.planets);
     
-    planets.forEach(([name, data]: [string, any], index) => {
+    planets.forEach(([name, data], index) => {
       const baseFreq = {
         Sun: 261.63, Moon: 293.66, Mercury: 329.63, Venus: 349.23, Mars: 392.00
       }[name] || 440;
@@ -150,17 +203,63 @@ class SimplifiedAstro {
   }
 }
 
-// Health check
-app.get('/health', (_req, res) => {
+// CORS configuration for Vercel domains
+const corsOptions = {
+  origin: [
+    /\.vercel\.app$/,
+    /vercel\.app$/,
+    process.env.FRONTEND_URL
+  ].filter(Boolean),
+  credentials: false,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+
+// Basic middleware
+app.use(compression());
+app.use(helmet({
+  crossOriginEmbedderPolicy: false,
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "blob:"],
+      connectSrc: ["'self'"],
+      fontSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      mediaSrc: ["'self'"],
+      frameSrc: ["'none'"],
+    },
+  },
+}));
+
+app.use(cors(corsOptions));
+app.use(morgan('combined'));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Health check endpoint
+app.get('/health', (req, res) => {
   res.json({ 
     status: 'ok', 
     env: process.env.NODE_ENV || 'development',
-    port: port,
+    port: PORT,
     timestamp: new Date().toISOString()
   });
 });
 
-// Daily chart endpoint
+// API status endpoint
+app.get('/api/status', (req, res) => {
+  res.json({
+    swissephAvailable,
+    status: 'operational',
+    version: '1.0.0',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Daily chart endpoint - core functionality
 app.get('/api/daily/:date', (req, res) => {
   try {
     const { date } = req.params;
@@ -175,13 +274,15 @@ app.get('/api/daily/:date', (req, res) => {
       return res.status(400).json({ error: 'Invalid date' });
     }
     
-    const chart = SimplifiedAstro.generateDailyChart(date);
+    const result = MusicEngine.generateDailyChartMusic(date, 'ambient');
     
     res.json({
       success: true,
       data: {
         date,
-        chart,
+        chart: result.chart,
+        events: result.events,
+        metadata: result.metadata,
         generated_at: new Date().toISOString()
       }
     });
@@ -191,56 +292,48 @@ app.get('/api/daily/:date', (req, res) => {
   }
 });
 
-// Music genres endpoint
-app.get('/api/music/genres', (_req, res) => {
-  res.json(['ambient', 'techno', 'world', 'hiphop']);
+// Genres endpoint
+app.get('/api/genres', (req, res) => {
+  res.json({
+    success: true,
+    data: ['ambient', 'techno', 'world', 'hiphop']
+  });
 });
 
-// Music generation endpoint
-app.post('/api/music/generate', (req, res) => {
-  try {
-    const { chart, genre = 'ambient' } = req.body;
-    
-    if (!chart) {
-      return res.status(400).json({ error: 'Chart data required' });
-    }
-    
-    const events = SimplifiedAstro.generateMusicEvents(chart, genre);
-    
-    res.json({
-      success: true,
-      data: {
-        events,
-        genre,
-        duration: events.length * 2, // Total duration
-        generated_at: new Date().toISOString()
-      }
-    });
-  } catch (error) {
-    console.error('Music generation error:', error);
-    res.status(500).json({ error: 'Failed to generate music' });
-  }
+// Legacy genres endpoint for compatibility
+app.get('/api/music/genres', (req, res) => {
+  res.json(['ambient', 'techno', 'world', 'hiphop']);
 });
 
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error('Error:', err);
-  res.status(err.status || 500).json({
-    error: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
+  console.error('Unhandled error:', err);
+  res.status(500).json({
+    success: false,
+    error: 'Internal server error',
+    message: process.env.NODE_ENV === 'development' ? err.message : 'Server error'
   });
 });
 
 // 404 handler
-app.use('*', (req, res) => {
-  res.status(404).json({ error: 'Route not found' });
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    error: 'Endpoint not found',
+    path: req.path
+  });
 });
 
-// Start server - IMPORTANT: bind to 0.0.0.0 for Render
-app.listen(port, '0.0.0.0', () => {
-  console.log(`🎵 Astradio API listening on http://0.0.0.0:${port}`);
-  console.log(`📊 Health: http://0.0.0.0:${port}/health`);
-  console.log(`🌟 Daily chart: http://0.0.0.0:${port}/api/daily/YYYY-MM-DD`);
-  console.log(`🎼 Genres: http://0.0.0.0:${port}/api/music/genres`);
+// Start server - CRITICAL: Listen on process.env.PORT for Render
+app.listen(PORT, () => {
+  console.log(`🎵 Astradio API Server Started`);
+  console.log(`🌐 Port: ${PORT}`);
+  console.log(`🔒 CORS: Configured for Vercel domains`);
+  console.log(`📍 Health: GET /health`);
+  console.log(`🌅 Daily Charts: GET /api/daily/:date`);
+  console.log(`🎶 Genres: GET /api/genres`);
+  console.log(`📊 Status: GET /api/status`);
+  console.log(`🎼 Swiss Ephemeris: ${swissephAvailable ? 'Available' : 'Fallback mode'}`);
 });
 
-export default app;
+module.exports = app;

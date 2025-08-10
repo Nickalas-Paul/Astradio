@@ -1,7 +1,7 @@
 // Audio Generator for Astradio Backend
 // Generates actual audio files or streams for astrological compositions
 
-import { AstroChart, AspectData } from '@astradio/types';
+import { AstroChart, AspectData, AudioConfig, PlanetAudioMapping } from '@astradio/types';
 
 export interface AudioNote {
   frequency: number;
@@ -360,7 +360,7 @@ export class AudioGenerator {
       }
     };
 
-    const harmonic = aspectAstrologicalHarmonics[aspect.type];
+    const harmonic = aspectAstrologicalHarmonics[aspect.type as keyof typeof aspectAstrologicalHarmonics];
     if (!harmonic) {
       console.warn('⚠️ Unknown aspect type:', aspect.type);
       return null;

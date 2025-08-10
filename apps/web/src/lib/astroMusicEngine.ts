@@ -19,7 +19,7 @@ export class FrontendAstroMusicEngine {
     try {
       console.log('🎵 Loading daily chart with genre:', genre);
       
-      const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const base = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL;
       const response = await fetch(`${base}/api/daily?genre=${genre}`, {
         method: 'POST',
         headers: {
