@@ -2,9 +2,9 @@ services:
   - type: web
     name: astradio-api
     env: node
-    rootDir: apps/api
-    buildCommand: pnpm install --frozen-lockfile && pnpm --filter api build
-    startCommand: node dist/app.js
+    rootDir: .
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter api build
+    startCommand: node apps/api/dist/app.js
     envVars:
       - key: NODE_VERSION
         value: 20
