@@ -174,10 +174,13 @@ export class UniversalAudioEngine {
     
     this.currentSession = {
       id: sessionId,
+      chartData,
+      audioConfig: { genre: 'ambient', tempo: 120, key: 'C', scale: ['C', 'D', 'E', 'F', 'G', 'A', 'B'], duration: 96 },
+      status: 'ready',
+      createdAt: new Date().toISOString(),
       chartId: chartData.metadata.birth_datetime,
-      configuration: { mode: 'sequential', duration: 96 },
-      isPlaying: true,
-      startTime: Date.now()
+      configuration: { genre: 'ambient', tempo: 120, key: 'C', scale: ['C', 'D', 'E', 'F', 'G', 'A', 'B'], duration: 96, volume: 0.7, mode: 'sequential' },
+      isPlaying: true
     };
 
     console.log('Generating sequential chart audio...');
@@ -226,7 +229,7 @@ export class UniversalAudioEngine {
       this.stopAll();
     }, totalDuration * 1000);
 
-    return this.currentSession;
+    return this.currentSession!;
   }
 
   async generateLayered(chartData: AstroChart): Promise<AudioSession> {
@@ -240,10 +243,13 @@ export class UniversalAudioEngine {
     
     this.currentSession = {
       id: sessionId,
+      chartData,
+      audioConfig: { genre: 'ambient', tempo: 120, key: 'C', scale: ['C', 'D', 'E', 'F', 'G', 'A', 'B'], duration: 60 },
+      status: 'ready',
+      createdAt: new Date().toISOString(),
       chartId: chartData.metadata.birth_datetime,
-      configuration: { mode: 'layered', duration: 60 },
-      isPlaying: true,
-      startTime: Date.now()
+      configuration: { genre: 'ambient', tempo: 120, key: 'C', scale: ['C', 'D', 'E', 'F', 'G', 'A', 'B'], duration: 60, volume: 0.7, mode: 'layered' },
+      isPlaying: true
     };
 
     console.log('Generating layered chart audio...');
@@ -286,7 +292,7 @@ export class UniversalAudioEngine {
       this.stopAll();
     }, 60000);
 
-    return this.currentSession;
+    return this.currentSession!;
   }
 
   async generateOverlay(chart1: AstroChart, chart2: AstroChart, config?: AudioConfiguration): Promise<AudioSession> {
@@ -302,19 +308,25 @@ export class UniversalAudioEngine {
     
     this.currentSession = {
       id: sessionId,
+      chartData: chart1, // Use first chart as primary
+      audioConfig: { genre: config?.genre || 'ambient', tempo, key: 'C', scale: ['C', 'D', 'E', 'F', 'G', 'A', 'B'], duration },
+      status: 'ready',
+      createdAt: new Date().toISOString(),
       chartId: `${chart1.metadata.birth_datetime}_${chart2.metadata.birth_datetime}`,
       configuration: { 
-        mode: 'overlay', 
-        duration,
+        genre: config?.genre || 'ambient',
         tempo,
-        ...config
+        key: 'C',
+        scale: ['C', 'D', 'E', 'F', 'G', 'A', 'B'],
+        duration,
+        volume: config?.volume || 0.7,
+        mode: 'overlay'
       },
-      isPlaying: true,
-      startTime: Date.now()
+      isPlaying: true
     };
 
     console.log('Generating overlay audio from two charts...');
-    console.log(`   Configuration: ${JSON.stringify(this.currentSession.configuration)}`);
+    console.log(`   Configuration: ${JSON.stringify(this.currentSession?.configuration)}`);
     console.log(`   Chart 1: ${chart1.metadata.birth_datetime} (${Object.keys(chart1.planets).length} planets)`);
     console.log(`   Chart 2: ${chart2.metadata.birth_datetime} (${Object.keys(chart2.planets).length} planets)`);
 
@@ -398,7 +410,7 @@ export class UniversalAudioEngine {
       this.stopAll();
     }, duration * 1000);
 
-    return this.currentSession;
+    return this.currentSession!;
   }
 
   stopAll(): void {

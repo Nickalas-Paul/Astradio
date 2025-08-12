@@ -2,17 +2,11 @@ services:
   - type: web
     name: astradio-api
     env: node
-    buildCommand: npm ci && npm run build
-    startCommand: npm start
     rootDir: apps/api
-    autoDeploy: true
-    buildFilter:
-      paths:
-        - apps/api/**
+    buildCommand: pnpm install --frozen-lockfile && pnpm --filter api build
+    startCommand: node dist/app.js
     envVars:
       - key: NODE_VERSION
-        value: 18
-      - key: NODE_ENV
-        value: production
-      - key: PORT
-        value: 10000
+        value: 20
+      - key: WEB_ORIGIN
+        sync: false

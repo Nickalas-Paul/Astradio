@@ -13,10 +13,18 @@ export interface SignData {
   modality: 'Cardinal' | 'Fixed' | 'Mutable';
 }
 
+export interface AspectData {
+  planet1: string;
+  planet2: string;
+  type: string;
+  angle: number;
+  harmonic: string;
+}
+
 export interface AstroChart {
   planets: { [key: string]: PlanetData };
   houses: { [key: string]: any };
-  aspects?: any[];
+  aspects?: AspectData[];
   metadata: {
     conversion_method: string;
     ayanamsa_correction: number;
@@ -25,12 +33,26 @@ export interface AstroChart {
   };
 }
 
+// Import GenreType from the single source of truth
+import type { GenreType } from '../lib/genreSystem';
+export type MoodType = 'calm' | 'energetic' | 'mystical' | 'grounded';
+
 export interface AudioConfig {
-  genre: 'ambient' | 'techno' | 'world' | 'hip-hop';
+  genre: GenreType;
   tempo: number;
   key: string;
   scale: string[];
   duration: number;
+}
+
+// Import GenreConfiguration from the single source of truth
+import type { GenreConfiguration } from '../lib/genreSystem';
+
+export interface MoodConfiguration {
+  volume: number;
+  reverb: number;
+  delay: number;
+  filter: number;
 }
 
 export interface PlanetAudioMapping {
@@ -60,13 +82,28 @@ export interface FormData {
   latitude: number;
   longitude: number;
   timezone?: number;
+  location?: string;
 }
 
 // Audio status for compatibility
 export interface AudioStatus {
   isPlaying: boolean;
+  isLoading: boolean;
   currentTime?: number;
   duration?: number;
   volume?: number;
-  currentSession?: any;
+  currentSession: any;
+  error: string | null;
+}
+
+// Audio session type
+export interface AudioSession {
+  id: string;
+  chartData: AstroChart;
+  audioConfig: AudioConfig;
+  status: 'generating' | 'ready' | 'error';
+  createdAt: string;
+  chartId?: string;
+  configuration?: any;
+  isPlaying?: boolean;
 }

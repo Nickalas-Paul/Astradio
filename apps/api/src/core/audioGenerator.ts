@@ -1,5 +1,5 @@
 // Minimal audio generator for API backend
-import { AstroChart, AspectData } from '../types/index.js';
+import { AstroChart, AspectData } from '../types';
 
 export interface AudioNote {
   frequency: number;

@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
-import SwissEphemerisService from '../services/swissEphemerisService.js';
-import { AstroMusicEngine } from '../core/astroCore.js';
-import { DailyChartRequest, DailyChartResponse } from '../types/index.js';
+import SwissEphemerisService from '../services/swissEphemerisService';
+import { AstroMusicEngine } from '../core/astroCore';
+import { DailyChartRequest, DailyChartResponse } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 
 class DailyChartController {

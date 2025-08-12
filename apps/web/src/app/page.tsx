@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import * as Tone from 'tone';
+import AutoPlayer from '../components/AutoPlayer';
 
 interface Planet {
   longitude: number;
@@ -42,6 +43,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [audioStarted, setAudioStarted] = useState(false);
+  const [audioId, setAudioId] = useState<string | null>(null);
 
   const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL;
 
@@ -53,17 +55,35 @@ export default function HomePage() {
     setLoading(true);
     setError(null);
     try {
-      const today = new Date().toISOString().split('T')[0];
-      const response = await fetch(`${API_URL}/api/daily/${today}`, {
+      // Fetch today's chart
+      const todayResponse = await fetch(`${API_URL}/api/ephemeris/today`, {
         cache: 'no-store'
       });
       
-      if (!response.ok) {
-        throw new Error(`Failed to fetch chart: ${response.status}`);
+      if (!todayResponse.ok) {
+        throw new Error(`Failed to fetch chart: ${todayResponse.status}`);
       }
       
-      const data = await response.json();
-      setChart(data.data.chart);
+      const todayData = await todayResponse.json();
+      setChart(todayData.chart);
+      
+      // Generate audio
+      const audioResponse = await fetch(`${API_URL}/api/audio/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          mode: 'personal', 
+          chartA: todayData.chart 
+        }),
+      });
+      
+      if (!audioResponse.ok) {
+        throw new Error(`Failed to generate audio: ${audioResponse.status}`);
+      }
+      
+      const audioData = await audioResponse.json();
+      setAudioId(audioData.audioId);
+      
     } catch (err) {
       console.error('Error fetching chart:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch chart');
@@ -452,6 +472,11 @@ export default function HomePage() {
           color: #1e40af;
         }
       `}</style>
+      
+      {/* AutoPlayer for autoplay with one-tap fallback */}
+      {audioId && (
+        <AutoPlayer src={`${API_URL}/api/audio/stream/${audioId}`} />
+      )}
     </div>
   );
 }

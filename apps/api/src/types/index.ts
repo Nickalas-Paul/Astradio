@@ -6,6 +6,30 @@ export interface PlanetData {
   retrograde: boolean;
 }
 
+// Audio session and configuration types
+export interface AudioSession {
+  id: string;
+  chartData: AstroChart;
+  audioConfig: AudioConfig;
+  status: 'generating' | 'ready' | 'error';
+  createdAt: string;
+  chartId?: string;
+  configuration?: AudioConfiguration;
+  isPlaying?: boolean;
+}
+
+export interface AudioConfiguration {
+  genre: 'ambient' | 'techno' | 'world' | 'hip-hop';
+  tempo: number;
+  key: string;
+  scale: string[];
+  duration: number;
+  volume: number;
+  mode?: 'sequential' | 'layered' | 'overlay';
+}
+
+export type GenreType = 'ambient' | 'techno' | 'world' | 'hip-hop';
+
 export interface SignData {
   name: string;
   degree: number;

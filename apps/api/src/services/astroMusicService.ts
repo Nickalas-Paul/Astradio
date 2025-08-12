@@ -1,8 +1,8 @@
 // Astrological Music Service for Backend
 // Handles chart-to-music conversion and provides API endpoints
 
-import { AstroChart, PlanetData, AspectData } from '../types/index.js';
-import { AudioGenerator } from '../core/audioGenerator.js';
+import { AstroChart, PlanetData, AspectData } from '../types';
+import { AudioGenerator } from '../core/audioGenerator';
 
 // Define AudioNote type locally to match the expected interface
 interface AudioNote {
@@ -63,8 +63,8 @@ class AstroMusicService {
 
       console.log(`🎵 Generated composition with ${composition.notes.length} notes`);
 
-      // Generate WAV buffer
-      const wavBuffer = this.audioGenerator.generateWAVBuffer(composition);
+      // For now, return the composition data directly
+      // WAV buffer generation would be implemented separately
 
       // In a real implementation, you would save this to a file or stream
       // For now, we'll return the composition data

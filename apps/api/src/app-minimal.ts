@@ -1,6 +1,6 @@
-const express = require('express');
-const cors = require('cors');
-const dotenv = require('dotenv');
+import express, { Request, Response } from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
 
 dotenv.config();
 
@@ -16,7 +16,7 @@ app.use(cors({
 app.use(express.json());
 
 // Health check
-app.get('/health', (req, res) => {
+app.get('/health', (req: Request, res: Response) => {
   res.json({ 
     status: 'ok', 
     port: PORT,
@@ -25,7 +25,7 @@ app.get('/health', (req, res) => {
 });
 
 // Minimal daily chart
-app.get('/api/daily/:date', (req, res) => {
+app.get('/api/daily/:date', (req: Request, res: Response) => {
   const { date } = req.params;
   
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
@@ -44,11 +44,11 @@ app.get('/api/daily/:date', (req, res) => {
 });
 
 // Genres
-app.get('/api/genres', (req, res) => {
+app.get('/api/genres', (req: Request, res: Response) => {
   res.json(['ambient', 'techno', 'world', 'hiphop']);
 });
 
-app.get('/api/status', (req, res) => {
+app.get('/api/status', (req: Request, res: Response) => {
   res.json({ swissephAvailable: false, status: 'minimal' });
 });
 
@@ -56,4 +56,4 @@ app.listen(PORT, () => {
   console.log(`🎵 Astradio API (Minimal) on port ${PORT}`);
 });
 
-module.exports = app;
+export default app;

@@ -1,4 +1,4 @@
-import { AstroChart, PlanetData, HouseData, AspectData, SignData } from '../types/index.js';
+import { AstroChart, PlanetData, HouseData, AspectData, SignData } from '../types';
 
 
 // Try to import Swiss Ephemeris, but don't fail if it's not available

@@ -154,3 +154,8 @@ export class FrontendAstroMusicEngine {
     ];
   }
 }
+
+// Default export function that returns a new instance
+export default function getAstroMusicEngine(): FrontendAstroMusicEngine {
+  return new FrontendAstroMusicEngine();
+}

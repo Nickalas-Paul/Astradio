@@ -104,6 +104,18 @@ export class SimpleBrowserAudioEngine {
     this.oscillators = [];
   }
 
+  pause(): void {
+    this.isPlaying = false;
+    // For this simple implementation, pause is the same as stop
+    // In a more complex implementation, you'd store the current state
+  }
+
+  resume(): void {
+    // For this simple implementation, resume just sets playing to true
+    // In a more complex implementation, you'd restore the previous state
+    this.isPlaying = true;
+  }
+
   setVolume(volume: number): void {
     if (this.masterGain) {
       this.masterGain.gain.value = Math.max(0, Math.min(1, volume));

@@ -1,9 +1,9 @@
-const express = require('express');
-const cors = require('cors');
-const helmet = require('helmet');
-const compression = require('compression');
-const morgan = require('morgan');
-const dotenv = require('dotenv');
+import express, { Request, Response, NextFunction } from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import compression from 'compression';
+import morgan from 'morgan';
+import dotenv from 'dotenv';
 
 // Load environment variables
 dotenv.config();
@@ -203,12 +203,13 @@ class MusicEngine {
   }
 }
 
-// CORS configuration for Vercel domains
+// CORS configuration for development and production
 const corsOptions = {
   origin: [
     /\.vercel\.app$/,
     /vercel\.app$/,
-    process.env.FRONTEND_URL
+    process.env.WEB_ORIGIN || 'http://localhost:3000',
+    ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : [])
   ].filter(Boolean),
   credentials: false,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -240,7 +241,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Health check endpoint
-app.get('/health', (req, res) => {
+app.get('/health', (req: Request, res: Response) => {
   res.json({ 
     status: 'ok', 
     env: process.env.NODE_ENV || 'development',
@@ -250,7 +251,7 @@ app.get('/health', (req, res) => {
 });
 
 // API status endpoint
-app.get('/api/status', (req, res) => {
+app.get('/api/status', (req: Request, res: Response) => {
   res.json({
     swissephAvailable,
     status: 'operational',
@@ -259,8 +260,30 @@ app.get('/api/status', (req, res) => {
   });
 });
 
+// Today's chart endpoint
+app.get('/api/ephemeris/today', (req: Request, res: Response) => {
+  try {
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+    const result = MusicEngine.generateDailyChartMusic(today, 'ambient');
+    
+    res.json({
+      success: true,
+      data: {
+        date: today,
+        chart: result.chart,
+        events: result.events,
+        metadata: result.metadata,
+        generated_at: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    console.error('Today chart error:', error);
+    res.status(500).json({ error: 'Failed to generate today chart' });
+  }
+});
+
 // Daily chart endpoint - core functionality
-app.get('/api/daily/:date', (req, res) => {
+app.get('/api/daily/:date', (req: Request, res: Response) => {
   try {
     const { date } = req.params;
     
@@ -293,7 +316,7 @@ app.get('/api/daily/:date', (req, res) => {
 });
 
 // Genres endpoint
-app.get('/api/genres', (req, res) => {
+app.get('/api/genres', (req: Request, res: Response) => {
   res.json({
     success: true,
     data: ['ambient', 'techno', 'world', 'hiphop']
@@ -301,12 +324,73 @@ app.get('/api/genres', (req, res) => {
 });
 
 // Legacy genres endpoint for compatibility
-app.get('/api/music/genres', (req, res) => {
+app.get('/api/music/genres', (req: Request, res: Response) => {
   res.json(['ambient', 'techno', 'world', 'hiphop']);
 });
 
+// Audio generation endpoint
+app.post('/api/audio/generate', (req: Request, res: Response) => {
+  try {
+    const { chartA, chartB, mode = 'personal', genre = 'ambient' } = req.body;
+    
+    if (!chartA) {
+      return res.status(400).json({ error: 'chartA is required' });
+    }
+    
+    // Generate a unique audio ID
+    const audioId = `audio_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    // For now, return the audio ID immediately
+    // In a real implementation, this would queue the audio generation
+    res.json({
+      success: true,
+      audioId,
+      status: 'ready',
+      mode,
+      genre
+    });
+  } catch (error) {
+    console.error('Audio generation error:', error);
+    res.status(500).json({ error: 'Failed to generate audio' });
+  }
+});
+
+// Audio streaming endpoint
+app.get('/api/audio/stream/:audioId', (req: Request, res: Response) => {
+  try {
+    const { audioId } = req.params;
+    
+    // Set proper headers for audio streaming
+    res.setHeader('Content-Type', 'audio/wav');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Accept-Ranges', 'bytes');
+    
+    // For now, generate a simple audio stream
+    // In a real implementation, this would stream the actual generated audio
+    const sampleRate = 44100;
+    const duration = 10; // 10 seconds
+    const samples = sampleRate * duration;
+    
+    // Generate a simple sine wave
+    const frequency = 440; // A4 note
+    const amplitude = 0.3;
+    
+    for (let i = 0; i < samples; i++) {
+      const sample = Math.sin(2 * Math.PI * frequency * i / sampleRate) * amplitude;
+      const buffer = Buffer.alloc(2);
+      buffer.writeInt16LE(Math.floor(sample * 32767), 0);
+      res.write(buffer);
+    }
+    
+    res.end();
+  } catch (error) {
+    console.error('Audio streaming error:', error);
+    res.status(500).json({ error: 'Failed to stream audio' });
+  }
+});
+
 // Error handling middleware
-app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   console.error('Unhandled error:', err);
   res.status(500).json({
     success: false,
@@ -316,7 +400,7 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 });
 
 // 404 handler
-app.use((req, res) => {
+app.use((req: Request, res: Response) => {
   res.status(404).json({
     success: false,
     error: 'Endpoint not found',
@@ -336,4 +420,4 @@ app.listen(PORT, () => {
   console.log(`🎼 Swiss Ephemeris: ${swissephAvailable ? 'Available' : 'Fallback mode'}`);
 });
 
-module.exports = app;
+export default app;

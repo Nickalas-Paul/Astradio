@@ -4,8 +4,10 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import compression from 'compression';
 import dotenv from 'dotenv';
-import SwissEphemerisService from './services/swissEphemerisService.js';
-import DailyChartController from './controllers/dailyChartController.js';
+import SwissEphemerisService from './services/swissEphemerisService';
+import DailyChartController from './controllers/dailyChartController';
+import audioRouter from './routes/audio';
+import ephemerisRouter from './routes/ephemeris';
 
 dotenv.config();
 
@@ -13,13 +15,10 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // CORS configuration for deployment
+const ORIGINS = (process.env.WEB_ORIGIN ?? 'http://localhost:3000')
+  .split(',').map(s => s.trim()).filter(Boolean);
 const corsOptions = {
-  origin: [
-    /\.vercel\.app$/,
-    /localhost:\d+$/,
-    'https://astradio-web.vercel.app',
-    'http://localhost:3000'
-  ],
+  origin: ORIGINS,
   credentials: false,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -63,8 +62,39 @@ app.get('/api/daily/:date', dailyChartController.getChartForDate.bind(dailyChart
 app.get('/api/genres', dailyChartController.getAvailableGenres.bind(dailyChartController));
 app.get('/api/status', dailyChartController.getSwissEphStatus.bind(dailyChartController));
 
+// Audio generation endpoint
+app.post('/api/audio/generate', (req, res) => {
+  try {
+    const { chartA, chartB, mode = 'personal', genre = 'ambient' } = req.body;
+    
+    if (!chartA) {
+      return res.status(400).json({ error: 'chartA is required' });
+    }
+    
+    // Generate a unique audio ID
+    const audioId = `audio_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    // For now, return the audio ID immediately
+    // In a real implementation, this would queue the audio generation
+    res.json({
+      success: true,
+      audioId,
+      status: 'ready',
+      mode,
+      genre
+    });
+  } catch (error) {
+    console.error('Audio generation error:', error);
+    res.status(500).json({ error: 'Failed to generate audio' });
+  }
+});
+
 // Legacy endpoint for compatibility  
 app.get('/api/music/genres', dailyChartController.getAvailableGenres.bind(dailyChartController));
+
+// Mount routers
+app.use('/api/audio', audioRouter);
+app.use('/api/ephemeris', ephemerisRouter);
 
 // Simple music play endpoint
 app.post('/api/music/play', async (req, res) => {

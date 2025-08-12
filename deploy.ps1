@@ -54,7 +54,7 @@ try {
     Write-Host "   - NODE_ENV=production" -ForegroundColor White
     Write-Host "   - PORT=10000" -ForegroundColor White
     
-    $apiUrl = Read-Host "`nEnter your Render API URL (e.g., https://astradio-api.onrender.com)"
+    $apiUrl = Read-Host "Enter your Render API URL"
 }
 
 # Deploy Web to Vercel
@@ -84,7 +84,7 @@ try {
     Write-Host "5. Environment Variables:" -ForegroundColor White
     Write-Host "   - NEXT_PUBLIC_API_BASE_URL = $apiUrl" -ForegroundColor White
     
-    $webUrl = Read-Host "`nEnter your Vercel Web URL (e.g., https://astradio-web.vercel.app)"
+    $webUrl = Read-Host "Enter your Vercel Web URL"
 }
 
 # Test deployment

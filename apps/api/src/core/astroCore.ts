@@ -1,4 +1,4 @@
-import { AstroChart, PlanetData, AudioConfig, PlanetAudioMapping, SignData } from '../types/index.js';
+import { AstroChart, PlanetData, AudioConfig, PlanetAudioMapping, SignData } from '../types';
 
 export class AstroMusicEngine {
   private planetFrequencies: { [key: string]: number } = {
