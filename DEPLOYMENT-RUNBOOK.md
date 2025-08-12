@@ -17,17 +17,17 @@ Deploy the streamlined Astradio app: **Render API** + **Vercel Web** with minima
 
 ## Step 1: Deploy API to Render
 
-### 1.1 Push to Main Branch
-```bash
-git add .
-git commit -m "Phase 2: Streamlined Render + Vercel deployment"
-git push origin main
+### 1.1 One-time Setup (only once)
+```powershell
+# Get your Render API token from https://render.com → Account Settings → API Keys
+[Environment]::SetEnvironmentVariable("RENDER_API_KEY","<YOUR_TOKEN>","User")
+$env:RENDER_API_KEY = "<YOUR_TOKEN>"  # for current session
 ```
 
-### 1.2 Create Render Service
+### 1.2 Create Render Service (only once)
 1. Go to [render.com](https://render.com)
 2. Click "New +" → "Web Service"
-3. Connect your GitHub repo
+3. Connect your GitHub repo: `https://github.com/Nickalas-Paul/Astradio`
 4. Render will auto-detect `render.yaml` configuration:
    - **Name**: `astradio-api`
    - **Root Directory**: `apps/api`
@@ -35,14 +35,26 @@ git push origin main
    - **Start Command**: `node dist/app.js`
    - **Node Version**: 20
 
-### 1.3 Configure Environment Variables
-In Render dashboard → Environment:
-- `NODE_VERSION`: `20`
-- `WEB_ORIGIN`: `https://astradio-web.vercel.app,https://astradio.io` (comma-separated)
+5. Set Environment Variables in Render dashboard:
+   - `NODE_VERSION`: `20`
+   - `WEB_ORIGIN`: `https://astradio-web.vercel.app,https://astradio.io`
 
-### 1.4 Deploy and Get API URL
-- Deploy will start automatically
-- Note the **public URL**: `https://astradio-api.onrender.com`
+### 1.3 Automated Deployment (every deploy)
+```powershell
+# Push changes
+git add .
+git commit -m "Update message"
+git push origin master
+
+# Deploy via API (zero prompts)
+.\scripts\deploy-render-api.ps1
+```
+
+The script will:
+- Find the `astradio-api` service
+- Trigger a deploy with cache clear
+- Poll until status is `live`
+- Output the API URL and health check
 
 ## Step 2: Deploy Web to Vercel
 
@@ -99,6 +111,12 @@ curl -L https://astradio-api.onrender.com/api/audio/stream/<audioId> -o test.wav
 - **Health**: `https://astradio-api.onrender.com/health`
 
 ## Troubleshooting
+
+### Check Service Status
+```powershell
+# Check current service status and latest deploy
+.\scripts\status-render-api.ps1
+```
 
 ### If API Build Fails
 - Check Render logs for pnpm/TypeScript errors
