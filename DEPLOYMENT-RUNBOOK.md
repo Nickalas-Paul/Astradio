@@ -30,10 +30,17 @@ $env:RENDER_API_KEY = "<YOUR_TOKEN>"  # for current session
 3. Connect your GitHub repo: `https://github.com/Nickalas-Paul/Astradio`
 4. Render will auto-detect `render.yaml` configuration:
    - **Name**: `astradio-api`
-   - **Root Directory**: `apps/api`
-   - **Build Command**: `pnpm install --frozen-lockfile && pnpm --filter api build`
-   - **Start Command**: `node dist/app.js`
-   - **Node Version**: 20
+   - **Root Directory**: `.` (repo root for workspace)
+   - **Build Command**: `corepack enable && pnpm install --frozen-lockfile && pnpm --filter api build`
+   - **Start Command**: `node apps/api/dist/app.js`
+   - **Node Version**: 20 (pinned via `.node-version`)
+
+### 1.3 Fix Existing Service (if needed)
+If your service was created with the old config, run:
+```powershell
+.\scripts\render-update-service.ps1
+```
+This patches the service to use pnpm and workspace-aware build.
 
 5. Set Environment Variables in Render dashboard:
    - `NODE_VERSION`: `20`
@@ -119,9 +126,11 @@ curl -L https://astradio-api.onrender.com/api/audio/stream/<audioId> -o test.wav
 ```
 
 ### If API Build Fails
+- **Workspace issues**: Run `.\scripts\render-update-service.ps1` to fix pnpm/workspace config
 - Check Render logs for pnpm/TypeScript errors
 - Verify `apps/api/tsconfig.json` exists
 - Ensure all dependencies are in `package.json`
+- Verify `.node-version` contains `20`
 
 ### If CORS Errors
 - Verify `WEB_ORIGIN` includes exact Vercel URL
