@@ -12,14 +12,13 @@
     "dev": "concurrently \"npm run dev:api\" \"npm run dev:web\"",
     "dev:api": "cd apps/api && npm run dev",
     "dev:web": "cd apps/web && npm run dev",
-    "deploy:api": "tsx scripts/renderDeploy.ts"
+    "deploy:api": "node scripts/renderDeploy.js"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",
     "cross-env": "10.0.0",
     "ts-node": "^10.9.1",
-    "typescript": "^5.4.2",
-    "tsx": "^4.15.7"
+    "typescript": "^5.4.2"
   },
   "engines": {
     "node": ">=18.0.0"
