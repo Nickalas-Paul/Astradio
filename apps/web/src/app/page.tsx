@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import * as Tone from 'tone';
 import AutoPlayer from '../components/AutoPlayer';
+import { getTodayChart, generateAudio, streamUrl } from '@/lib/api';
 
 interface Planet {
   longitude: number;
@@ -44,8 +45,8 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
   const [audioStarted, setAudioStarted] = useState(false);
   const [audioId, setAudioId] = useState<string | null>(null);
-
-  const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL;
+  const [needsTap, setNeedsTap] = useState(false);
+  const audioRef = useRef<HTMLAudioElement>(null);
 
   useEffect(() => {
     fetchTodaysChart();
@@ -56,33 +57,22 @@ export default function HomePage() {
     setError(null);
     try {
       // Fetch today's chart
-      const todayResponse = await fetch(`${API_URL}/api/ephemeris/today`, {
-        cache: 'no-store'
-      });
-      
-      if (!todayResponse.ok) {
-        throw new Error(`Failed to fetch chart: ${todayResponse.status}`);
-      }
-      
-      const todayData = await todayResponse.json();
+      const todayData = await getTodayChart();
       setChart(todayData.chart);
-      
+
       // Generate audio
-      const audioResponse = await fetch(`${API_URL}/api/audio/generate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          mode: 'personal', 
-          chartA: todayData.chart 
-        }),
+      const audioData = await generateAudio({ 
+        mode: 'personal', 
+        chartA: todayData.chart 
       });
-      
-      if (!audioResponse.ok) {
-        throw new Error(`Failed to generate audio: ${audioResponse.status}`);
-      }
-      
-      const audioData = await audioResponse.json();
       setAudioId(audioData.audioId);
+      
+      // Set up audio stream
+      const url = streamUrl(audioData.audioId);
+      if (audioRef.current) {
+        audioRef.current.src = url;
+        await audioRef.current.play().catch(() => setNeedsTap(true));
+      }
       
     } catch (err) {
       console.error('Error fetching chart:', err);
@@ -473,10 +463,36 @@ export default function HomePage() {
         }
       `}</style>
       
-      {/* AutoPlayer for autoplay with one-tap fallback */}
-      {audioId && (
-        <AutoPlayer src={`${API_URL}/api/audio/stream/${audioId}`} />
+      {/* Audio element for streaming */}
+      <audio ref={audioRef} preload="auto" />
+      
+      {/* Tap to play button */}
+      {needsTap && (
+        <button 
+          onClick={() => audioRef.current?.play()}
+          className="play-button"
+          style={{
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            zIndex: 1000,
+            background: '#4f46e5',
+            color: 'white',
+            border: 'none',
+            padding: '15px 30px',
+            borderRadius: '8px',
+            fontSize: '18px',
+            cursor: 'pointer'
+          }}
+        >
+          Start soundtrack
+        </button>
       )}
+      
+      {/* Loading and error states */}
+      {!chart && !error && <p>Loading chart…</p>}
+      {error && <p className="text-red-500">Error: {error}</p>}
     </div>
   );
 }

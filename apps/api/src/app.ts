@@ -15,18 +15,33 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // CORS configuration for deployment
-const ORIGINS = (process.env.WEB_ORIGIN ?? 'http://localhost:3000')
-  .split(',').map(s => s.trim()).filter(Boolean);
-const corsOptions = {
-  origin: ORIGINS,
-  credentials: false,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-};
+const RAW = process.env.WEB_ORIGIN ?? 'http://localhost:3000';
+const STATIC = RAW.split(',')
+  .map(s => s.trim())
+  .filter(Boolean);
+
+// allow *.vercel.app & *.vercel.dev in addition to explicit origins
+const WILDCARDS = [/\.vercel\.app$/i, /\.vercel\.dev$/i];
+
+function isAllowed(origin?: string | null) {
+  if (!origin) return true; // same-origin / curl
+  try {
+    const url = new URL(origin);
+    if (STATIC.includes(origin)) return true;
+    return WILDCARDS.some(rx => rx.test(url.hostname));
+  } catch {
+    return false;
+  }
+}
 
 // Security and middleware
 app.use(helmet());
-app.use(cors(corsOptions));
+app.use(cors({
+  origin: (origin, cb) => isAllowed(origin) ? cb(null, true) : cb(new Error('CORS')),
+  methods: ['GET','POST','OPTIONS'],
+  allowedHeaders: ['Content-Type','Authorization'],
+  credentials: false
+}));
 app.use(compression());
 app.use(morgan('combined'));
 app.use(express.json({ limit: '10mb' }));
