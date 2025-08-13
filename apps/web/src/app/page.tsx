@@ -1,8 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import * as Tone from 'tone';
-import AutoPlayer from '../components/AutoPlayer';
 import { getTodayChart, generateAudio, streamUrl } from '@/lib/api';
 
 interface Planet {
@@ -27,15 +25,6 @@ interface Chart {
   };
 }
 
-interface MusicEvent {
-  planet: string;
-  frequency: number;
-  startTime: number;
-  duration: number;
-  volume: number;
-  instrument: string;
-}
-
 export default function HomePage() {
   const [chart, setChart] = useState<Chart | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -43,128 +32,141 @@ export default function HomePage() {
   const [genre, setGenre] = useState('ambient');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [audioStarted, setAudioStarted] = useState(false);
   const [audioId, setAudioId] = useState<string | null>(null);
-  const [needsTap, setNeedsTap] = useState(false);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [apiStatus, setApiStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const audioRef = useRef<HTMLAudioElement>(null);
 
+  // Test API connection on mount
   useEffect(() => {
-    fetchTodaysChart();
+    testApiConnection();
   }, []);
+
+  // Load chart and generate audio when API is ready
+  useEffect(() => {
+    if (apiStatus === 'success' && !chart) {
+      fetchTodaysChart();
+    }
+  }, [apiStatus, chart]);
+
+  const testApiConnection = async () => {
+    setApiStatus('loading');
+    try {
+      const response = await fetch('https://astradio-1.onrender.com/health');
+      if (response.ok) {
+        setApiStatus('success');
+        console.log('✅ API connection successful');
+      } else {
+        throw new Error(`API health check failed: ${response.status}`);
+      }
+    } catch (err) {
+      setApiStatus('error');
+      setError(`API connection failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      console.error('❌ API connection failed:', err);
+    }
+  };
 
   const fetchTodaysChart = async () => {
     setLoading(true);
     setError(null);
     try {
+      console.log('🔄 Fetching today\'s chart...');
+      
       // Fetch today's chart
       const todayData = await getTodayChart();
+      console.log('✅ Chart loaded:', todayData.chart.planets);
       setChart(todayData.chart);
 
       // Generate audio
+      console.log('🔄 Generating audio for genre:', genre);
       const audioData = await generateAudio({ 
         mode: 'personal', 
-        chartA: todayData.chart 
+        chartA: todayData.chart,
+        genre: genre
       });
+      console.log('✅ Audio generated:', audioData.audioId);
       setAudioId(audioData.audioId);
       
-      // Set up audio stream
+      // Set up audio stream URL
       const url = streamUrl(audioData.audioId);
-      if (audioRef.current) {
-        audioRef.current.src = url;
-        await audioRef.current.play().catch(() => setNeedsTap(true));
-      }
+      setAudioUrl(url);
+      console.log('✅ Audio URL set:', url);
       
     } catch (err) {
-      console.error('Error fetching chart:', err);
+      console.error('❌ Error in fetchTodaysChart:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch chart');
     } finally {
       setLoading(false);
     }
   };
 
-  const startAudioContext = async () => {
-    if (Tone.context.state !== 'running') {
-      await Tone.start();
-      setAudioStarted(true);
-    }
-  };
-
   const playMusic = async () => {
     try {
-      await startAudioContext();
-      
-      if (!chart) return;
+      if (!audioRef.current || !audioUrl) {
+        console.error('❌ No audio element or URL available');
+        return;
+      }
 
-      // Stop any existing audio
-      Tone.getTransport().stop();
-      Tone.getTransport().cancel();
-
-      // Generate music events from chart
-      const events = generateMusicEvents(chart, genre);
+      console.log('🔄 Playing music...');
       
       // Set volume
-      Tone.getDestination().volume.value = Tone.gainToDb(volume);
-
-      // Create synths and schedule events
-      events.forEach((event) => {
-        const synth = new Tone.Synth({
-          oscillator: { type: event.instrument as any },
-          envelope: {
-            attack: 0.1,
-            decay: 0.2,
-            sustain: 0.7,
-            release: 0.8
-          }
-        }).toDestination();
-
-        Tone.getTransport().schedule((time) => {
-          synth.triggerAttackRelease(
-            Tone.Frequency(event.frequency, 'hz').toNote(),
-            event.duration,
-            time,
-            event.volume * volume
-          );
-        }, event.startTime);
-      });
-
-      Tone.getTransport().start();
+      audioRef.current.volume = volume;
+      
+      // Play audio
+      await audioRef.current.play();
       setIsPlaying(true);
+      console.log('✅ Music playing successfully');
+      
     } catch (err) {
-      console.error('Error playing music:', err);
-      setError('Failed to play music');
+      console.error('❌ Error playing music:', err);
+      setError('Failed to play music. Please try clicking the play button again.');
     }
   };
 
   const stopMusic = () => {
-    Tone.getTransport().stop();
-    Tone.getTransport().cancel();
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
     setIsPlaying(false);
+    console.log('⏹️ Music stopped');
   };
 
-  const generateMusicEvents = (chart: Chart, genre: string): MusicEvent[] => {
-    const events: MusicEvent[] = [];
-    const planets = Object.entries(chart.planets);
-    
-    planets.forEach(([name, data], index) => {
-      const baseFreq: { [key: string]: number } = {
-        Sun: 261.63, Moon: 293.66, Mercury: 329.63, Venus: 349.23, Mars: 392.00
-      };
-      
-      const frequency = (baseFreq[name] || 440) * (1 + (data.longitude / 360) * 0.5);
-      const startTime = index * 2; // 2 seconds apart
-      const duration = genre === 'techno' ? 1.5 : genre === 'ambient' ? 4 : 2;
-      
-      events.push({
-        planet: name,
-        frequency: Math.round(frequency),
-        startTime,
-        duration,
-        volume: 0.6,
-        instrument: genre === 'techno' ? 'square' : genre === 'ambient' ? 'sine' : 'triangle'
-      });
-    });
-    
-    return events;
+  const handleGenreChange = async (newGenre: string) => {
+    console.log('🔄 Changing genre to:', newGenre);
+    setGenre(newGenre);
+    if (chart) {
+      // Regenerate audio with new genre
+      try {
+        setLoading(true);
+        const audioData = await generateAudio({ 
+          mode: 'personal', 
+          chartA: chart,
+          genre: newGenre
+        });
+        setAudioId(audioData.audioId);
+        const url = streamUrl(audioData.audioId);
+        setAudioUrl(url);
+        console.log('✅ New audio generated for genre:', newGenre);
+        
+        // Stop current playback
+        if (isPlaying) {
+          stopMusic();
+        }
+      } catch (err) {
+        console.error('❌ Error regenerating audio:', err);
+        setError('Failed to change genre');
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  const handleVolumeChange = (newVolume: number) => {
+    setVolume(newVolume);
+    if (audioRef.current) {
+      audioRef.current.volume = newVolume;
+    }
   };
 
   const renderChartWheel = () => {
@@ -261,12 +263,30 @@ export default function HomePage() {
     );
   };
 
+  const renderStatus = () => {
+    if (apiStatus === 'loading') {
+      return <div className="status loading">🔄 Connecting to API...</div>;
+    }
+    if (apiStatus === 'error') {
+      return <div className="status error">❌ API connection failed</div>;
+    }
+    if (loading) {
+      return <div className="status loading">🔄 Loading chart and generating music...</div>;
+    }
+    if (audioUrl) {
+      return <div className="status success">✅ Ready to play music!</div>;
+    }
+    return null;
+  };
+
   return (
     <div className="container">
       <header className="header">
         <h1>🎵 Astradio - Daily Chart Music</h1>
         <p>Today&apos;s planetary positions converted to music</p>
       </header>
+
+      {renderStatus()}
 
       {error && (
         <div className="error">
@@ -278,12 +298,10 @@ export default function HomePage() {
       <div className="main-content">
         <div className="chart-section">
           <h2>Today&apos;s Chart</h2>
-          {loading ? (
-            <div className="loading">Loading chart...</div>
-          ) : chart ? (
+          {chart ? (
             renderChartWheel()
           ) : (
-            <div className="error">No chart data available</div>
+            <div className="loading">Loading chart...</div>
           )}
         </div>
 
@@ -292,7 +310,7 @@ export default function HomePage() {
           
           <div className="genre-selector">
             <label>Genre:</label>
-            <select value={genre} onChange={(e) => setGenre(e.target.value)}>
+            <select value={genre} onChange={(e) => handleGenreChange(e.target.value)} disabled={loading}>
               <option value="ambient">Ambient</option>
               <option value="techno">Techno</option>
               <option value="world">World</option>
@@ -303,7 +321,7 @@ export default function HomePage() {
           <div className="playback-controls">
             <button
               onClick={isPlaying ? stopMusic : playMusic}
-              disabled={!chart || loading}
+              disabled={!audioUrl || loading}
               className="play-button"
             >
               {isPlaying ? '⏹️ Stop' : '▶️ Play'}
@@ -318,14 +336,15 @@ export default function HomePage() {
               max="1"
               step="0.1"
               value={volume}
-              onChange={(e) => setVolume(parseFloat(e.target.value))}
+              onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
             />
             <span>{Math.round(volume * 100)}%</span>
           </div>
 
-          {!audioStarted && (
-            <div className="audio-note">
-              💡 Click Play to start audio (browser requires user interaction)
+          {audioUrl && (
+            <div className="audio-info">
+              <p>✅ Audio ready: {audioId}</p>
+              <p>Genre: {genre}</p>
             </div>
           )}
         </div>
@@ -347,6 +366,29 @@ export default function HomePage() {
         .header h1 {
           color: #4f46e5;
           margin-bottom: 10px;
+        }
+
+        .status {
+          padding: 15px;
+          border-radius: 8px;
+          margin-bottom: 20px;
+          text-align: center;
+          font-weight: 500;
+        }
+
+        .status.loading {
+          background: #dbeafe;
+          color: #1e40af;
+        }
+
+        .status.success {
+          background: #d1fae5;
+          color: #065f46;
+        }
+
+        .status.error {
+          background: #fee2e2;
+          color: #991b1b;
         }
 
         .error {
@@ -454,45 +496,26 @@ export default function HomePage() {
           margin-bottom: 8px;
         }
 
-        .audio-note {
-          background: #dbeafe;
+        .audio-info {
+          background: #d1fae5;
           padding: 12px;
           border-radius: 6px;
           font-size: 14px;
-          color: #1e40af;
+          color: #065f46;
         }
       `}</style>
       
       {/* Audio element for streaming */}
-      <audio ref={audioRef} preload="auto" />
-      
-      {/* Tap to play button */}
-      {needsTap && (
-        <button 
-          onClick={() => audioRef.current?.play()}
-          className="play-button"
-          style={{
-            position: 'fixed',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            zIndex: 1000,
-            background: '#4f46e5',
-            color: 'white',
-            border: 'none',
-            padding: '15px 30px',
-            borderRadius: '8px',
-            fontSize: '18px',
-            cursor: 'pointer'
-          }}
-        >
-          Start soundtrack
-        </button>
-      )}
-      
-      {/* Loading and error states */}
-      {!chart && !error && <p>Loading chart…</p>}
-      {error && <p className="text-red-500">Error: {error}</p>}
+      <audio 
+        ref={audioRef} 
+        preload="auto" 
+        src={audioUrl || undefined}
+        onEnded={() => setIsPlaying(false)}
+        onError={(e) => {
+          console.error('Audio error:', e);
+          setError('Audio playback error. Please try again.');
+        }}
+      />
     </div>
   );
 }

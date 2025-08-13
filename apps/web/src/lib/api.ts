@@ -1,5 +1,4 @@
-const API = process.env.NEXT_PUBLIC_API_URL!;
-if (!API) throw new Error('NEXT_PUBLIC_API_URL missing');
+const API = process.env.NEXT_PUBLIC_API_URL || 'https://astradio-1.onrender.com';
 
 export async function getTodayChart() {
   const r = await fetch(`${API}/api/ephemeris/today`, { cache: 'no-store' });
