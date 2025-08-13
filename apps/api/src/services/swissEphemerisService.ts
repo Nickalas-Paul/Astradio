@@ -1,24 +1,21 @@
 import { AstroChart, PlanetData, HouseData, AspectData, SignData } from '../types';
 
+let sw: any | null = null;
+try { sw = require('swisseph'); } catch { sw = null; }
 
-// Try to import Swiss Ephemeris, but don't fail if it's not available
-let SwissEph: any = null;
-let swissephAvailable = false;
-
-try {
-  SwissEph = require('swisseph');
-  swissephAvailable = true;
-  console.log('✅ Swiss Ephemeris native module loaded successfully');
-} catch (error) {
-  console.log('⚠️  Swiss Ephemeris native module not available, using fallback calculations');
-  console.log('   To enable full Swiss Ephemeris functionality, install Visual Studio Build Tools');
+const REQUIRE_NATIVE = process.env.REQUIRE_NATIVE_SWISSEPH === 'true';
+if (REQUIRE_NATIVE && !sw) {
+  throw new Error('Native swisseph required but not available.');
 }
 
-class SwissEphemerisService {
+export class SwissEphemerisService {
+  private readonly mode: 'native' | 'fallback';
   private isAvailable: boolean;
 
   constructor() {
-    this.isAvailable = swissephAvailable;
+    const forcedFallback = process.env.SWISSEPH_MODE === 'fallback';
+    this.mode = !forcedFallback && sw ? 'native' : 'fallback';
+    this.isAvailable = this.mode === 'native';
     
     if (this.isAvailable) {
       this.initializeSwissEph();
@@ -27,11 +24,13 @@ class SwissEphemerisService {
     }
   }
 
+  getMode() { return this.mode; }
+
   private initializeSwissEph() {
     try {
       // Initialize Swiss Ephemeris with data files
       const dataPath = process.env.SWISS_EPHEMERIS_DATA_PATH || './temp-swisseph';
-      SwissEph.swe_set_ephe_path(dataPath);
+      sw.swe_set_ephe_path(dataPath);
       console.log('✅ Swiss Ephemeris initialized with data path:', dataPath);
     } catch (error) {
       console.error('❌ Failed to initialize Swiss Ephemeris:', error);
@@ -132,7 +131,7 @@ class SwissEphemerisService {
     
     planetIds.forEach((planetId, index) => {
       try {
-        const result = SwissEph.swe_calc_ut(julianDay, planetId, SwissEph.SEFLG_SWIEPH);
+        const result = sw.swe_calc_ut(julianDay, planetId, sw.SEFLG_SWIEPH);
         const longitude = result.longitude;
         const sign = this.longitudeToSign(longitude);
         
@@ -160,7 +159,7 @@ class SwissEphemerisService {
     const julianDay = this.dateToJulianDay(date);
     
     try {
-      const result = SwissEph.swe_houses(julianDay, latitude, longitude, 'P'); // Placidus system
+      const result = sw.swe_houses(julianDay, latitude, longitude, 'P'); // Placidus system
       
       for (let i = 1; i <= 12; i++) {
         const cuspLongitude = result.cusps[i];

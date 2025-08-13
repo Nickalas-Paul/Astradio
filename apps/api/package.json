@@ -1,12 +1,11 @@
 {
-  "name": "astradio-api",
+  "name": "api",
   "version": "1.0.0",
   "private": true,
   "type": "commonjs",
   "main": "dist/app.js",
   "scripts": {
-    "dev": "cross-env PORT=3001 nodemon -q src/app.ts",
-    "build": "tsc -b",
+    "build": "tsc -p tsconfig.json",
     "start": "node dist/app.js",
     "typecheck": "tsc --noEmit"
   },

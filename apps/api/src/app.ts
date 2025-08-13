@@ -35,14 +35,14 @@ app.use(express.json({ limit: '10mb' }));
 app.get('/health', (req, res) => {
   try {
     const swissEphService = new SwissEphemerisService();
-    const isSwissEphAvailable = swissEphService.isSwissEphAvailable();
+    const mode = swissEphService.getMode();
     
     res.json({ 
       ok: true,
       timestamp: new Date().toISOString(),
       environment: process.env.NODE_ENV || 'development',
       port: PORT,
-      swiss_ephemeris: isSwissEphAvailable ? 'available' : 'simplified'
+      swisseph: mode
     });
   } catch (error) {
     console.error('Health check error:', error);
