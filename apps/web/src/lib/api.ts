@@ -1,21 +1,17 @@
+// apps/web/src/lib/api.ts
+import { fetchJSON } from './http';
+
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://astradio-1.onrender.com';
 
-export async function getTodayChart() {
-  const r = await fetch(`${API}/api/ephemeris/today`, { cache: 'no-store' });
-  if (!r.ok) throw new Error(`today failed: ${r.status}`);
-  return r.json();
-}
+export const getTodayChart = () =>
+  fetchJSON(`${API}/api/ephemeris/today`);
 
-export async function generateAudio(payload: any) {
-  const r = await fetch(`${API}/api/audio/generate`, {
+export const generateAudio = (payload: any) =>
+  fetchJSON(`${API}/api/audio/generate`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(payload),
   });
-  if (!r.ok) throw new Error(`generate failed: ${r.status}`);
-  return r.json() as Promise<{ audioId: string }>;
-}
 
-export function streamUrl(audioId: string) {
-  return `${API}/api/audio/stream/${audioId}`;
-}
+export const streamUrl = (id: string) =>
+  `${API}/api/audio/stream/${id}?t=${Date.now()}`;

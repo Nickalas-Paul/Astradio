@@ -1,6 +1,5 @@
 'use client';
-
-import React, { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { getTodayChart, generateAudio, streamUrl } from '@/lib/api';
 
 interface Planet {
@@ -26,79 +25,78 @@ interface Chart {
 }
 
 export default function HomePage() {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [loading, setLoading] = useState(true);
+  const [needsTap, setNeedsTap] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
   const [chart, setChart] = useState<Chart | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(0.7);
   const [genre, setGenre] = useState('ambient');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [audioId, setAudioId] = useState<string | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
-  const [apiStatus, setApiStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const audioRef = useRef<HTMLAudioElement>(null);
+  const [loadTime, setLoadTime] = useState<number | null>(null);
+  const [slow, setSlow] = useState(false);
 
-  // Test API connection on mount
   useEffect(() => {
-    testApiConnection();
+    (async () => {
+      const startTime = Date.now();
+      console.time('page-load');
+      try {
+        // Start both requests immediately for parallel loading
+        const [chartData] = await Promise.all([
+          getTodayChart(),
+          // Could add other parallel requests here
+        ]);
+
+        setChart(chartData.chart);
+        
+        // Generate audio immediately after chart loads
+        const { audioId } = await generateAudio({ 
+          mode: 'personal', 
+          chartA: chartData.chart,
+          genre: genre
+        });
+        
+        const url = streamUrl(audioId);
+        setAudioId(audioId);
+        setAudioUrl(url);
+
+        // Try to start playback immediately
+        if (audioRef.current) {
+          audioRef.current.src = url;
+          audioRef.current.volume = volume;
+          
+          try {
+            await audioRef.current.play();
+            setIsPlaying(true);
+            console.log('✅ Auto-play successful');
+          } catch (playError) {
+            console.log('⚠️ Auto-play blocked, showing play button');
+            setNeedsTap(true);
+          }
+        }
+        
+        const endTime = Date.now();
+        setLoadTime(endTime - startTime);
+        setLoading(false);
+        console.timeEnd('page-load');
+        console.log(`🚀 Page loaded in ${endTime - startTime}ms`);
+        
+      } catch (e: any) {
+        console.error('❌ Page load error:', e);
+        setErr(e?.message ?? 'Failed to load chart and audio');
+        setLoading(false);
+        console.timeEnd('page-load');
+      }
+    })();
   }, []);
 
-  // Load chart and generate audio when API is ready
+  // Optional UX nicety - show friendly fallback if request exceeds ~6s
   useEffect(() => {
-    if (apiStatus === 'success' && !chart) {
-      fetchTodaysChart();
-    }
-  }, [apiStatus, chart]);
-
-  const testApiConnection = async () => {
-    setApiStatus('loading');
-    try {
-      const response = await fetch('https://astradio-1.onrender.com/health');
-      if (response.ok) {
-        setApiStatus('success');
-        console.log('✅ API connection successful');
-      } else {
-        throw new Error(`API health check failed: ${response.status}`);
-      }
-    } catch (err) {
-      setApiStatus('error');
-      setError(`API connection failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
-      console.error('❌ API connection failed:', err);
-    }
-  };
-
-  const fetchTodaysChart = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      console.log('🔄 Fetching today\'s chart...');
-      
-      // Fetch today's chart
-      const todayData = await getTodayChart();
-      console.log('✅ Chart loaded:', todayData.chart.planets);
-      setChart(todayData.chart);
-
-      // Generate audio
-      console.log('🔄 Generating audio for genre:', genre);
-      const audioData = await generateAudio({ 
-        mode: 'personal', 
-        chartA: todayData.chart,
-        genre: genre
-      });
-      console.log('✅ Audio generated:', audioData.audioId);
-      setAudioId(audioData.audioId);
-      
-      // Set up audio stream URL
-      const url = streamUrl(audioData.audioId);
-      setAudioUrl(url);
-      console.log('✅ Audio URL set:', url);
-      
-    } catch (err) {
-      console.error('❌ Error in fetchTodaysChart:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch chart');
-    } finally {
-      setLoading(false);
-    }
-  };
+    const id = setTimeout(() => setSlow(true), 6000);
+    return () => clearTimeout(id);
+  }, []);
 
   const playMusic = async () => {
     try {
@@ -115,11 +113,12 @@ export default function HomePage() {
       // Play audio
       await audioRef.current.play();
       setIsPlaying(true);
+      setNeedsTap(false);
       console.log('✅ Music playing successfully');
       
     } catch (err) {
       console.error('❌ Error playing music:', err);
-      setError('Failed to play music. Please try clicking the play button again.');
+      setErr('Failed to play music. Please try clicking the play button again.');
     }
   };
 
@@ -153,9 +152,20 @@ export default function HomePage() {
         if (isPlaying) {
           stopMusic();
         }
+        
+        // Try to start new audio
+        if (audioRef.current) {
+          audioRef.current.src = url;
+          try {
+            await audioRef.current.play();
+            setIsPlaying(true);
+          } catch (playError) {
+            setNeedsTap(true);
+          }
+        }
       } catch (err) {
         console.error('❌ Error regenerating audio:', err);
-        setError('Failed to change genre');
+        setErr('Failed to change genre');
       } finally {
         setLoading(false);
       }
@@ -263,35 +273,38 @@ export default function HomePage() {
     );
   };
 
-  const renderStatus = () => {
-    if (apiStatus === 'loading') {
-      return <div className="status loading">🔄 Connecting to API...</div>;
-    }
-    if (apiStatus === 'error') {
-      return <div className="status error">❌ API connection failed</div>;
-    }
-    if (loading) {
-      return <div className="status loading">🔄 Loading chart and generating music...</div>;
-    }
-    if (audioUrl) {
-      return <div className="status success">✅ Ready to play music!</div>;
-    }
-    return null;
-  };
-
   return (
     <div className="container">
       <header className="header">
         <h1>🎵 Astradio - Daily Chart Music</h1>
         <p>Today&apos;s planetary positions converted to music</p>
+        {loadTime && (
+          <div className="load-time">
+            ⚡ Loaded in {loadTime}ms
+          </div>
+        )}
       </header>
 
-      {renderStatus()}
-
-      {error && (
-        <div className="error">
-          ❌ {error}
-          <button onClick={() => setError(null)}>×</button>
+      {loading && (
+        <div className="loading-indicator">
+          <div className="spinner"></div>
+          <div>Loading chart and generating music…</div>
+          {slow && !err && <p>Still preparing your soundtrack… one moment.</p>}
+        </div>
+      )}
+      
+      {needsTap && (
+        <div className="play-prompt">
+          <button onClick={playMusic} className="play-button-large">
+            ▶️ Tap to Play Music
+          </button>
+        </div>
+      )}
+      
+      {err && (
+        <div className="error-message">
+          ❌ {err}
+          <button onClick={() => setErr(null)} className="error-close">×</button>
         </div>
       )}
 
@@ -345,6 +358,7 @@ export default function HomePage() {
             <div className="audio-info">
               <p>✅ Audio ready: {audioId}</p>
               <p>Genre: {genre}</p>
+              {isPlaying && <p>🎵 Now playing...</p>}
             </div>
           )}
         </div>
@@ -368,30 +382,59 @@ export default function HomePage() {
           margin-bottom: 10px;
         }
 
-        .status {
-          padding: 15px;
-          border-radius: 8px;
-          margin-bottom: 20px;
-          text-align: center;
+        .load-time {
+          color: #10b981;
+          font-size: 14px;
           font-weight: 500;
         }
 
-        .status.loading {
-          background: #dbeafe;
-          color: #1e40af;
+        .loading-indicator {
+          text-align: center;
+          padding: 40px;
+          color: #666;
         }
 
-        .status.success {
-          background: #d1fae5;
-          color: #065f46;
+        .spinner {
+          width: 40px;
+          height: 40px;
+          border: 4px solid #f3f3f3;
+          border-top: 4px solid #4f46e5;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+          margin: 0 auto 20px;
         }
 
-        .status.error {
-          background: #fee2e2;
-          color: #991b1b;
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
         }
 
-        .error {
+        .play-prompt {
+          text-align: center;
+          padding: 20px;
+          background: #f0f9ff;
+          border: 2px solid #0ea5e9;
+          border-radius: 12px;
+          margin-bottom: 20px;
+        }
+
+        .play-button-large {
+          background: #0ea5e9;
+          color: white;
+          border: none;
+          padding: 20px 40px;
+          border-radius: 12px;
+          font-size: 20px;
+          cursor: pointer;
+          font-weight: 600;
+        }
+
+        .play-button-large:hover {
+          background: #0284c7;
+        }
+
+        .error-message {
+          color: #ef4444;
           background: #fee2e2;
           border: 1px solid #fecaca;
           padding: 15px;
@@ -402,11 +445,12 @@ export default function HomePage() {
           align-items: center;
         }
 
-        .error button {
+        .error-close {
           background: none;
           border: none;
           font-size: 18px;
           cursor: pointer;
+          color: #ef4444;
         }
 
         .loading {
@@ -508,12 +552,14 @@ export default function HomePage() {
       {/* Audio element for streaming */}
       <audio 
         ref={audioRef} 
-        preload="auto" 
+        preload="auto"
+        playsInline
+        crossOrigin="anonymous"
         src={audioUrl || undefined}
         onEnded={() => setIsPlaying(false)}
         onError={(e) => {
           console.error('Audio error:', e);
-          setError('Audio playback error. Please try again.');
+          setErr('Audio playback error. Please try again.');
         }}
       />
     </div>

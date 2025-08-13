@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Astradio Audio Debug</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8fafc;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+        }
+        button {
+            background: #4f46e5;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #4338ca;
+        }
+        .status {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success { background: #d1fae5; color: #065f46; }
+        .error { background: #fee2e2; color: #991b1b; }
+        .info { background: #dbeafe; color: #1e40af; }
+        pre {
+            background: #f1f5f9;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎵 Astradio Audio Debug</h1>
+        <p>Testing audio functionality to identify landing page issues</p>
+
+        <div class="test-section">
+            <h3>1. API Connection Test</h3>
+            <button onclick="testAPI()">Test API Health</button>
+            <button onclick="testTodayChart()">Test Today's Chart</button>
+            <button onclick="testAudioGeneration()">Test Audio Generation</button>
+            <div id="api-status"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>2. Audio Streaming Test</h3>
+            <button onclick="testAudioStream()">Test Audio Stream</button>
+            <button onclick="playStreamedAudio()">Play Streamed Audio</button>
+            <audio id="streamAudio" controls></audio>
+            <div id="stream-status"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>3. Tone.js Test</h3>
+            <button onclick="testToneJS()">Test Tone.js</button>
+            <button onclick="playToneJS()">Play Tone.js Audio</button>
+            <div id="tone-status"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>4. Console Logs</h3>
+            <div id="console-logs"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'https://astradio-1.onrender.com';
+        let audioId = null;
+        let chartData = null;
+
+        function log(message, type = 'info') {
+            const logs = document.getElementById('console-logs');
+            const timestamp = new Date().toLocaleTimeString();
+            logs.innerHTML += `<div class="status ${type}">[${timestamp}] ${message}</div>`;
+            console.log(message);
+        }
+
+        async function testAPI() {
+            try {
+                log('Testing API health...');
+                const response = await fetch(`${API_URL}/health`);
+                const data = await response.json();
+                document.getElementById('api-status').innerHTML = 
+                    `<div class="status success">✅ API Health: ${JSON.stringify(data)}</div>`;
+                log('API health test successful', 'success');
+            } catch (error) {
+                document.getElementById('api-status').innerHTML = 
+                    `<div class="status error">❌ API Health Error: ${error.message}</div>`;
+                log('API health test failed: ' + error.message, 'error');
+            }
+        }
+
+        async function testTodayChart() {
+            try {
+                log('Fetching today\'s chart...');
+                const response = await fetch(`${API_URL}/api/ephemeris/today`);
+                chartData = await response.json();
+                document.getElementById('api-status').innerHTML += 
+                    `<div class="status success">✅ Chart loaded: ${Object.keys(chartData.chart.planets).length} planets</div>`;
+                log('Chart data loaded successfully', 'success');
+            } catch (error) {
+                document.getElementById('api-status').innerHTML += 
+                    `<div class="status error">❌ Chart Error: ${error.message}</div>`;
+                log('Chart fetch failed: ' + error.message, 'error');
+            }
+        }
+
+        async function testAudioGeneration() {
+            try {
+                log('Generating audio...');
+                const response = await fetch(`${API_URL}/api/audio/generate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        mode: 'personal',
+                        chartA: chartData?.chart || { planets: { Sun: { longitude: 140.5 } } }
+                    })
+                });
+                const data = await response.json();
+                audioId = data.audioId;
+                document.getElementById('api-status').innerHTML += 
+                    `<div class="status success">✅ Audio generated: ${audioId}</div>`;
+                log('Audio generation successful', 'success');
+            } catch (error) {
+                document.getElementById('api-status').innerHTML += 
+                    `<div class="status error">❌ Audio Generation Error: ${error.message}</div>`;
+                log('Audio generation failed: ' + error.message, 'error');
+            }
+        }
+
+        async function testAudioStream() {
+            if (!audioId) {
+                log('No audio ID available. Generate audio first.', 'error');
+                return;
+            }
+            try {
+                log('Testing audio stream...');
+                const response = await fetch(`${API_URL}/api/audio/stream/${audioId}`);
+                if (response.ok) {
+                    document.getElementById('stream-status').innerHTML = 
+                        `<div class="status success">✅ Audio stream available (${response.headers.get('content-length')} bytes)</div>`;
+                    log('Audio stream test successful', 'success');
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                document.getElementById('stream-status').innerHTML = 
+                    `<div class="status error">❌ Audio Stream Error: ${error.message}</div>`;
+                log('Audio stream test failed: ' + error.message, 'error');
+            }
+        }
+
+        function playStreamedAudio() {
+            if (!audioId) {
+                log('No audio ID available. Generate audio first.', 'error');
+                return;
+            }
+            try {
+                log('Playing streamed audio...');
+                const audio = document.getElementById('streamAudio');
+                audio.src = `${API_URL}/api/audio/stream/${audioId}`;
+                audio.play().then(() => {
+                    document.getElementById('stream-status').innerHTML += 
+                        '<div class="status success">✅ Streamed audio playing</div>';
+                    log('Streamed audio playing successfully', 'success');
+                }).catch(error => {
+                    document.getElementById('stream-status').innerHTML += 
+                        `<div class="status error">❌ Audio Play Error: ${error.message}</div>`;
+                    log('Audio play failed: ' + error.message, 'error');
+                });
+            } catch (error) {
+                document.getElementById('stream-status').innerHTML += 
+                    `<div class="status error">❌ Audio Setup Error: ${error.message}</div>`;
+                log('Audio setup failed: ' + error.message, 'error');
+            }
+        }
+
+        async function testToneJS() {
+            try {
+                log('Loading Tone.js...');
+                const script = document.createElement('script');
+                script.src = 'https://unpkg.com/tone@14.7.77/build/Tone.js';
+                script.onload = () => {
+                    document.getElementById('tone-status').innerHTML = 
+                        '<div class="status success">✅ Tone.js loaded successfully</div>';
+                    log('Tone.js loaded successfully', 'success');
+                };
+                script.onerror = () => {
+                    document.getElementById('tone-status').innerHTML = 
+                        '<div class="status error">❌ Tone.js failed to load</div>';
+                    log('Tone.js failed to load', 'error');
+                };
+                document.head.appendChild(script);
+            } catch (error) {
+                document.getElementById('tone-status').innerHTML = 
+                    `<div class="status error">❌ Tone.js Error: ${error.message}</div>`;
+                log('Tone.js test failed: ' + error.message, 'error');
+            }
+        }
+
+        function playToneJS() {
+            if (typeof Tone === 'undefined') {
+                log('Tone.js not loaded. Load it first.', 'error');
+                return;
+            }
+            try {
+                log('Playing Tone.js audio...');
+                Tone.start().then(() => {
+                    const synth = new Tone.Synth().toDestination();
+                    synth.triggerAttackRelease("C4", "8n");
+                    document.getElementById('tone-status').innerHTML += 
+                        '<div class="status success">✅ Tone.js audio playing</div>';
+                    log('Tone.js audio playing successfully', 'success');
+                }).catch(error => {
+                    document.getElementById('tone-status').innerHTML += 
+                        `<div class="status error">❌ Tone.js Play Error: ${error.message}</div>`;
+                    log('Tone.js play failed: ' + error.message, 'error');
+                });
+            } catch (error) {
+                document.getElementById('tone-status').innerHTML += 
+                    `<div class="status error">❌ Tone.js Setup Error: ${error.message}</div>`;
+                log('Tone.js setup failed: ' + error.message, 'error');
+            }
+        }
+
+        // Auto-run API test on load
+        window.onload = () => {
+            log('Debug page loaded. Starting tests...');
+            testAPI();
+        };
+    </script>
+</body>
+</html>

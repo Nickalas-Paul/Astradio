@@ -6,8 +6,8 @@ import compression from 'compression';
 import dotenv from 'dotenv';
 import SwissEphemerisService from './services/swissEphemerisService';
 import DailyChartController from './controllers/dailyChartController';
-import audioRouter from './routes/audio';
-import ephemerisRouter from './routes/ephemeris';
+import { audioRouter } from './routes/audio';
+import { ephemerisRouter } from './routes/ephemeris';
 
 dotenv.config();
 
@@ -64,32 +64,7 @@ app.get('/api/daily/:date', dailyChartController.getChartForDate.bind(dailyChart
 app.get('/api/genres', dailyChartController.getAvailableGenres.bind(dailyChartController));
 app.get('/api/status', dailyChartController.getSwissEphStatus.bind(dailyChartController));
 
-// Audio generation endpoint
-app.post('/api/audio/generate', (req, res) => {
-  try {
-    const { chartA, chartB, mode = 'personal', genre = 'ambient' } = req.body;
-    
-    if (!chartA) {
-      return res.status(400).json({ error: 'chartA is required' });
-    }
-    
-    // Generate a unique audio ID
-    const audioId = `audio_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
-    // For now, return the audio ID immediately
-    // In a real implementation, this would queue the audio generation
-    res.json({
-      success: true,
-      audioId,
-      status: 'ready',
-      mode,
-      genre
-    });
-  } catch (error) {
-    console.error('Audio generation error:', error);
-    res.status(500).json({ error: 'Failed to generate audio' });
-  }
-});
+
 
 // Legacy endpoint for compatibility  
 app.get('/api/music/genres', dailyChartController.getAvailableGenres.bind(dailyChartController));
