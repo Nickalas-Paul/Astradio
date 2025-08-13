@@ -15,31 +15,32 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // CORS configuration for deployment
-const RAW = process.env.WEB_ORIGIN ?? 'http://localhost:3000';
-const STATIC = RAW.split(',')
-  .map(s => s.trim())
-  .filter(Boolean);
-
-// allow *.vercel.app & *.vercel.dev in addition to explicit origins
-const WILDCARDS = [/\.vercel\.app$/i, /\.vercel\.dev$/i];
-
-function isAllowed(origin?: string | null) {
-  if (!origin) return true; // same-origin / curl
-  try {
-    const url = new URL(origin);
-    if (STATIC.includes(origin)) return true;
-    return WILDCARDS.some(rx => rx.test(url.hostname));
-  } catch {
-    return false;
-  }
-}
+const allowedOrigins = [
+  'http://localhost:3000',
+  'https://astradio.vercel.app',
+  'https://astradio-l7i5o0bcx-nickalas-pauls-projects.vercel.app'
+];
 
 // Security and middleware
 app.use(helmet());
 app.use(cors({
-  origin: (origin, cb) => isAllowed(origin) ? cb(null, true) : cb(new Error('CORS')),
-  methods: ['GET','POST','OPTIONS'],
-  allowedHeaders: ['Content-Type','Authorization'],
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      // Allow all vercel.app domains
+      if (origin.includes('vercel.app')) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    }
+  },
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: false
 }));
 app.use(compression());
