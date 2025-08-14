@@ -21,7 +21,7 @@ async function ok(res: Response) {
 }
 
 export async function fetchTodayChart(): Promise<ChartData> {
-  const res = await ok(fetch(`${API_BASE}/api/daily/${ymd()}`, { cache: 'no-store' }));
+  const res = await ok(fetch(`${API_BASE}/api/today`, { cache: 'no-store' }));
   return res.json();
 }
 

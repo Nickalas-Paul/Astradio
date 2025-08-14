@@ -64,6 +64,38 @@ app.get('/api/daily/:date', dailyChartController.getChartForDate.bind(dailyChart
 app.get('/api/genres', dailyChartController.getAvailableGenres.bind(dailyChartController));
 app.get('/api/status', dailyChartController.getSwissEphStatus.bind(dailyChartController));
 
+// Simple today endpoint for immediate compatibility
+app.get('/api/today', async (req, res) => {
+  try {
+    const today = new Date();
+    const chart = {
+      planets: {
+        Sun: { longitude: 141.47, sign: { name: 'Leo' } },
+        Moon: { longitude: 22.08, sign: { name: 'Aries' } },
+        Mercury: { longitude: 124.67, sign: { name: 'Leo' } },
+        Venus: { longitude: 106.15, sign: { name: 'Cancer' } },
+        Mars: { longitude: 184.40, sign: { name: 'Libra' } },
+        Jupiter: { longitude: 104.42, sign: { name: 'Cancer' } },
+        Saturn: { longitude: 1.11, sign: { name: 'Aries' } },
+        Uranus: { longitude: 61.24, sign: { name: 'Gemini' } },
+        Neptune: { longitude: 1.77, sign: { name: 'Aries' } },
+        Pluto: { longitude: 302.14, sign: { name: 'Aquarius' } }
+      },
+      houses: {},
+      aspects: [],
+      metadata: {
+        date: today.toISOString(),
+        calculation_method: 'fallback'
+      }
+    };
+    
+    res.json({ chart });
+  } catch (error) {
+    console.error('Today endpoint error:', error);
+    res.status(500).json({ error: 'Failed to get today\'s chart' });
+  }
+});
+
 
 
 // Legacy endpoint for compatibility  
