@@ -1,0 +1,5 @@
+[33ma6db27d[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m, [m[1;31morigin/master[m[33m, [m[1;31morigin/HEAD[m[33m)[m Performance optimizations and API pipeline improvements - Enhanced audio generation with instant reload capabilities - Updated API routes for better audio handling - Improved frontend integration with optimized HTTP client - Added comprehensive performance monitoring and validation
+[33m87ac85a[m fix: clean vercel.json configuration to resolve deployment error
+[33mf938617[m fix: implement direct CORS headers to resolve cross-origin issues
+[33m41dd87a[m fix: update CORS configuration to allow Vercel frontend domains
+[33md60ca14[m fix: update CORS to allow Vercel domains and fix API URL

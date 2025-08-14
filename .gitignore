@@ -189,3 +189,5 @@ Thumbs.db
 
 # Turbo cache
 .turbo/ 
+.vercel
+.env*.local
