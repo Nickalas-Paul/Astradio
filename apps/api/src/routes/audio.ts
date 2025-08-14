@@ -52,17 +52,92 @@ function wavHeader(sampleRate: number, numSamples: number) {
   return buf;
 }
 
-// Enhanced streaming route with immediate playback optimization
+// Convert planet longitude to frequency (astrological music mapping)
+function planetToFrequency(planet: string, longitude: number): number {
+  // Base frequencies for each planet
+  const planetFrequencies: { [key: string]: number } = {
+    'Sun': 261.63,      // C4
+    'Moon': 293.66,     // D4
+    'Mercury': 329.63,  // E4
+    'Venus': 349.23,    // F4
+    'Mars': 392.00,     // G4
+    'Jupiter': 440.00,  // A4
+    'Saturn': 493.88,   // B4
+    'Uranus': 523.25,   // C5
+    'Neptune': 587.33,  // D5
+    'Pluto': 659.25     // E5
+  };
+  
+  const baseFreq = planetFrequencies[planet] || 440;
+  // Modulate frequency based on longitude (0-360 degrees)
+  const modulation = 1 + (longitude / 360) * 0.5; // ±50% variation
+  return baseFreq * modulation;
+}
+
+// Generate astrological music based on chart data
+function generateAstrologicalAudio(planets: any, sampleRate: number, duration: number) {
+  const totalSamples = sampleRate * duration;
+  const chunkSize = 512;
+  
+  return Readable.from((async function* () {
+    let sampleIndex = 0;
+    
+    while (sampleIndex < totalSamples) {
+      const chunk = Math.min(chunkSize, totalSamples - sampleIndex);
+      const buffer = Buffer.allocUnsafe(chunk * 2);
+      
+      for (let i = 0; i < chunk; i++) {
+        const time = (sampleIndex + i) / sampleRate;
+        let sample = 0;
+        
+        // Mix all planets based on their positions
+        Object.entries(planets).forEach(([planetName, planetData]: [string, any]) => {
+          const freq = planetToFrequency(planetName, planetData.longitude);
+          const amplitude = 0.1; // Reduce amplitude for mixing
+          const phase = (planetData.longitude / 360) * 2 * Math.PI;
+          
+          // Add planet's contribution to the mix
+          sample += amplitude * Math.sin(2 * Math.PI * freq * time + phase);
+        });
+        
+        // Clamp and convert to 16-bit
+        sample = Math.max(-1, Math.min(1, sample));
+        buffer.writeInt16LE(Math.round(sample * 0x7fff), i * 2);
+      }
+      
+      sampleIndex += chunk;
+      yield buffer;
+      
+      // Let the event loop breathe
+      await new Promise(r => setImmediate(r));
+    }
+  })());
+}
+
+// Enhanced streaming route with astrological audio generation
 audioRouter.get('/stream/:audioId', async (req, res) => {
   const { audioId } = req.params;
 
-  // Ultra-fast settings for instant preview
-  const sampleRate = 16000;          // lower SR = faster start, still clear
-  const seconds = 15;                // shorter preview for faster loading
-  const total = sampleRate * seconds;
-  const chunk = 512;                 // smaller chunks for immediate response
+  // Get the chart data from the generate endpoint (in a real app, this would be stored)
+  // For now, we'll generate a sample chart based on current planetary positions
+  const samplePlanets = {
+    'Sun': { longitude: 141.47, sign: { name: 'Leo' } },
+    'Moon': { longitude: 22.08, sign: { name: 'Aries' } },
+    'Mercury': { longitude: 124.67, sign: { name: 'Leo' } },
+    'Venus': { longitude: 106.15, sign: { name: 'Cancer' } },
+    'Mars': { longitude: 184.40, sign: { name: 'Libra' } },
+    'Jupiter': { longitude: 104.42, sign: { name: 'Cancer' } },
+    'Saturn': { longitude: 1.11, sign: { name: 'Aries' } },
+    'Uranus': { longitude: 61.24, sign: { name: 'Gemini' } },
+    'Neptune': { longitude: 1.77, sign: { name: 'Aries' } },
+    'Pluto': { longitude: 302.14, sign: { name: 'Aquarius' } }
+  };
 
-  // Set headers for immediate streaming
+  const sampleRate = 22050;  // Higher quality
+  const duration = 30;       // 30 seconds
+  const totalSamples = sampleRate * duration;
+
+  // Set headers for streaming
   res.set({
     'Content-Type': 'audio/wav',
     'Cache-Control': 'no-store, no-cache, must-revalidate',
@@ -72,38 +147,14 @@ audioRouter.get('/stream/:audioId', async (req, res) => {
     'X-Audio-ID': audioId
   });
 
-  // Write header immediately so playback can start
-  res.write(wavHeader(sampleRate, total));
+  // Write WAV header
+  res.write(wavHeader(sampleRate, totalSamples));
 
-  // Optimized audio generator with minimal latency
-  const stream = Readable.from((async function* () {
-    let i = 0;
-    const startTime = Date.now();
-    
-    while (i < total) {
-      const n = Math.min(chunk, total - i);
-      const buf = Buffer.allocUnsafe(n * 2);
-      
-      for (let k = 0; k < n; k++) {
-        const t = (i + k) / sampleRate;
-        // Simple but effective tone generation
-        const freq = 220 + Math.sin(t * 0.1) * 50; // varying frequency
-        const s = Math.sin(2 * Math.PI * freq * t) * 0.2;
-        buf.writeInt16LE((s * 0x7fff) | 0, k * 2);
-      }
-      
-      i += n;
-      yield buf;
-      
-      // Let the event loop breathe after each chunk
-      await new Promise(r => setImmediate(r));
-    }
-    
-    console.log(`🎵 Audio stream completed in ${Date.now() - startTime}ms`);
-  })());
+  // Generate astrological audio stream
+  const audioStream = generateAstrologicalAudio(samplePlanets, sampleRate, duration);
 
   // Error handling
-  stream.on('error', (e) => {
+  audioStream.on('error', (e) => {
     console.error('Audio stream error:', e);
     if (!res.headersSent) {
       res.status(500).json({ error: 'stream_failed' });
@@ -113,5 +164,5 @@ audioRouter.get('/stream/:audioId', async (req, res) => {
   });
 
   // Pipe to response
-  stream.pipe(res);
+  audioStream.pipe(res);
 });
