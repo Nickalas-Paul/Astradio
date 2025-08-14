@@ -174,7 +174,7 @@ class DailyChartController {
 
   async getSwissEphStatus(req: Request, res: Response): Promise<void> {
     try {
-      const isAvailable = this.swissEphService.isSwissEphAvailable();
+      const isAvailable = this.swissEphService.getMode() === 'native';
       
       res.json({
         swiss_ephemeris_available: isAvailable,
