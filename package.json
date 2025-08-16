@@ -1,26 +1,35 @@
 {
-  "name": "astradio",
-  "version": "1.0.0",
-  "description": "AI-powered astrological music generator",
+  "name": "astradio-monorepo",
   "private": true,
+  "type": "module",
   "packageManager": "pnpm@8.15.0",
+  "engines": {
+    "node": ">=18.18 <=22.x"
+  },
   "workspaces": [
     "apps/*",
     "packages/*"
   ],
   "scripts": {
-    "dev": "concurrently \"pnpm --filter api dev\" \"pnpm --filter web dev\"",
-    "build": "pnpm --filter shared build && pnpm --filter astro-core build && pnpm --filter api build && pnpm --filter web build",
-    "test": "node scripts/smoke.js",
-    "deploy:api": "node scripts/renderDeploy.js"
+    "build": "pnpm -r build",
+    "dev": "pnpm -r --parallel dev",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "guard:deps": "tsx tools/guard-deps.ts",
+    "verify": "pnpm lint && pnpm typecheck && pnpm guard:deps && pnpm test"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2",
-    "cross-env": "10.0.0",
-    "ts-node": "^10.9.1",
-    "typescript": "^5.4.2"
+    "@eslint/js": "9.33.0",
+    "@typescript-eslint/eslint-plugin": "^8.39.1",
+    "@typescript-eslint/parser": "^8.39.1",
+    "eslint": "^9.33.0",
+    "eslint-config-prettier": "^10.1.8",
+    "husky": "9.1.7",
+    "tsx": "^4.16.2",
+    "typescript": "^5.9.2"
   },
-  "engines": {
-    "node": ">=20"
+  "dependencies": {
+    "swisseph-wasm": "0.0.2"
   }
 }

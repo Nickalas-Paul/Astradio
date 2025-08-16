@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: true
+  reactStrictMode: true,
+  experimental: { esmExternals: true },
+  eslint: { ignoreDuringBuilds: false } // Re-enable linting
 };
-
-module.exports = nextConfig;
+export default nextConfig;
