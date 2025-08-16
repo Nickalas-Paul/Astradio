@@ -1,10 +1,10 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import { Readable } from 'node:stream';
 
-export const audioRouter = Router();
+export const audioRouter: Router = Router();
 
 // Audio generation endpoint
-audioRouter.post('/generate', (req, res) => {
+audioRouter.post('/generate', (req: Request, res: Response) => {
   try {
     const { chartA, chartB, mode = 'personal', genre = 'ambient' } = req.body;
     
@@ -115,7 +115,7 @@ function generateAstrologicalAudio(planets: any, sampleRate: number, duration: n
 }
 
 // Enhanced streaming route with astrological audio generation
-audioRouter.get('/stream/:audioId', async (req, res) => {
+audioRouter.get('/stream/:audioId', async (req: Request, res: Response) => {
   const { audioId } = req.params;
 
   // Get the chart data from the generate endpoint (in a real app, this would be stored)

@@ -1,7 +1,7 @@
 // scripts/renderDeploy.js - single source of truth for Render deploy (no tsx needed)
 const https = require('https');
 
-const NAME = process.env.RENDER_SERVICE_NAME || 'Astradio-1';
+const NAME = process.env.RENDER_SERVICE_NAME || 'astradio-api';
 const TOKEN = process.env.RENDER_API_KEY;
 const BASE = 'https://api.render.com/v1';
 

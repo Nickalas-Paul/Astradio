@@ -1,8 +1,8 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import SwissEphemerisService from '../services/swissEphemerisService';
 import { DayCache, isoDay } from '../utils/dayCache';
 
-export const ephemerisRouter = Router();
+export const ephemerisRouter: Router = Router();
 const eph = new SwissEphemerisService();
 const cache = new DayCache<any>(24 * 60 * 60 * 1000);
 
@@ -54,7 +54,7 @@ async function generateChartData(date: string) {
   return { chart };
 }
 
-ephemerisRouter.get('/today', async (_req, res) => {
+ephemerisRouter.get('/today', async (_req: Request, res: Response) => {
   const start = Date.now();
   const today = isoDay();
   const cached = cache.get(today);

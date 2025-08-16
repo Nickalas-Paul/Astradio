@@ -21,8 +21,9 @@ async function ok(res: Response) {
 }
 
 export async function fetchTodayChart(): Promise<ChartData> {
-  const res = await ok(fetch(`${API_BASE}/api/today`, { cache: 'no-store' }));
-  return res.json();
+  const res = await fetch(`${API_BASE}/api/today`, { cache: 'no-store' });
+  const checkedRes = await ok(res);
+  return checkedRes.json();
 }
 
 /** Returns a Blob URL you can assign to <audio src>. */
@@ -32,7 +33,7 @@ export async function generateAudioUrl(input: {
   genre?: string;
   tempo?: number;
 }): Promise<string> {
-  const res = await ok(fetch(`${API_BASE}/api/music/play`, {
+  const res = await fetch(`${API_BASE}/api/music/play`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     // API expects a single-shot stream response; we feed it to the <audio> via Blob URL
@@ -42,7 +43,8 @@ export async function generateAudioUrl(input: {
       genre: input.genre ?? 'ambient',
       tempo: input.tempo ?? 60,
     }),
-  }));
-  const blob = await res.blob();
+  });
+  const checkedRes = await ok(res);
+  const blob = await checkedRes.blob();
   return URL.createObjectURL(blob);
 }

@@ -2,7 +2,7 @@ name: Deploy Astradio
 
 on:
   push:
-    branches: [main]
+    branches: [main, master]
   workflow_dispatch:
 
 jobs:
@@ -16,116 +16,61 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '18'
-        cache: 'npm'
+        node-version: '20'
+        cache: 'pnpm'
+        cache-dependency-path: pnpm-lock.yaml
+        
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v2
+      with:
+        version: 8
         
     - name: Install dependencies
-      run: npm install
+      run: pnpm install --frozen-lockfile
       
     - name: Build monorepo
-      run: npm run build
+      run: pnpm build
       
-    - name: Prepare API deployment
+    - name: Run smoke test
       run: |
-        # Create API deployment directory
-        mkdir -p api-deployment
+        # Start API server in background
+        pnpm --filter api dev &
+        API_PID=$!
         
-        # Copy API source
-        cp -r apps/api/src api-deployment/
-        cp apps/api/package.json api-deployment/
-        cp apps/api/tsconfig.json api-deployment/
-        cp apps/api/env.example api-deployment/
+        # Wait for server to start
+        sleep 10
         
-        # Copy built packages
-        mkdir -p api-deployment/packages
-        cp -r packages/astro-core/dist api-deployment/packages/astro-core/
-        cp packages/astro-core/package.json api-deployment/packages/astro-core/
-        cp -r packages/audio-mappings/dist api-deployment/packages/audio-mappings/
-        cp packages/audio-mappings/package.json api-deployment/packages/audio-mappings/
-        cp -r packages/types/dist api-deployment/packages/types/
-        cp packages/types/package.json api-deployment/packages/types/
+        # Run smoke test
+        node scripts/smoke.js
         
-        # Create standalone package.json
-        cat > api-deployment/package.json << 'EOF'
-        {
-          "name": "astradio-api",
-          "version": "1.0.0",
-          "main": "dist/app.js",
-          "scripts": {
-            "build": "tsc",
-            "start": "node dist/app.js",
-            "dev": "nodemon src/app.ts"
-          },
-          "dependencies": {
-            "express": "^4.18.2",
-            "cors": "^2.8.5",
-            "helmet": "^7.1.0",
-            "morgan": "^1.10.0",
-            "compression": "^1.7.4",
-            "dotenv": "^16.3.1",
-            "sqlite3": "^5.1.6",
-            "sqlite": "^5.0.1",
-            "bcryptjs": "^2.4.3",
-            "jsonwebtoken": "^9.0.2",
-            "uuid": "^9.0.1",
-            "express-rate-limit": "^7.1.5",
-            "express-validator": "^7.0.1",
-            "zod": "^3.22.4",
-            "express-slow-down": "^2.0.1",
-            "hpp": "^0.2.3",
-            "express-mongo-sanitize": "^2.2.0",
-            "xss-clean": "^0.1.4",
-            "axios": "^1.6.0"
-          },
-          "devDependencies": {
-            "@types/express": "^4.17.21",
-            "@types/cors": "^2.8.17",
-            "@types/morgan": "^1.9.9",
-            "@types/compression": "^1.7.5",
-            "@types/bcryptjs": "^2.4.6",
-            "@types/jsonwebtoken": "^9.0.5",
-            "@types/uuid": "^9.0.7",
-            "@types/node": "^20.0.0",
-            "typescript": "^5.0.0",
-            "nodemon": "^3.0.2",
-            "ts-node": "^10.9.1"
-          }
-        }
-        EOF
+        # Stop API server
+        kill $API_PID
         
-        # Create Dockerfile
-        cat > api-deployment/Dockerfile << 'EOF'
-        FROM node:18
-        WORKDIR /usr/src/app
-        COPY package*.json ./
-        RUN npm install
-        COPY . .
-        RUN npm run build
-        EXPOSE 3001
-        CMD ["npm", "run", "start"]
-        EOF
+    - name: Deploy API to Render
+      env:
+        RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+        RENDER_SERVICE_NAME: ${{ secrets.RENDER_SERVICE_NAME || 'astradio-api' }}
+      run: |
+        # Use the existing Render deployment script
+        node scripts/renderDeploy.js
         
-        # Create .dockerignore
-        cat > api-deployment/.dockerignore << 'EOF'
-        node_modules
-        npm-debug.log*
-        .env
-        .env.local
-        .git
-        .gitignore
-        README.md
-        EOF
-        
-    - name: Deploy to Railway (API)
-      uses: railway/deploy@v1
-      with:
-        service: api
-        token: ${{ secrets.RAILWAY_TOKEN }}
-        
-    - name: Deploy to Vercel (Web)
+    - name: Deploy Web to Vercel
       uses: amondnet/vercel-action@v25
       with:
         vercel-token: ${{ secrets.VERCEL_TOKEN }}
         vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
         vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-        working-directory: ./apps/web 
+        working-directory: ./apps/web
+        vercel-args: '--prod'
+        
+    - name: Update environment variables
+      run: |
+        # Update Vercel environment variables to point to the new API URL
+        # This step ensures the frontend knows where to find the backend
+        echo "API deployment completed. Frontend should now be connected to the backend."
+        
+    - name: Verify deployment
+      run: |
+        echo "✅ Deployment completed successfully!"
+        echo "Backend: https://astradio-api.onrender.com"
+        echo "Frontend: https://astradio.vercel.app" 

@@ -11,7 +11,7 @@ import { ephemerisRouter } from './routes/ephemeris';
 
 dotenv.config();
 
-const app = express();
+const app: express.Application = express();
 const PORT = process.env.PORT || 3001;
 
 // CORS configuration - allow all origins for now

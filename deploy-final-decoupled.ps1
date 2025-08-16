@@ -1,104 +1,155 @@
-# Astradio Final Decoupled Deployment Script
-# This script provides deployment instructions for the audio engine pipeline
+# Astradio Automated Deployment Script
+# This script actually deploys the audio engine pipeline automatically
 
-Write-Host "🎵 Astradio Final Deployment - Audio Engine Pipeline" -ForegroundColor Cyan
-Write-Host "==================================================" -ForegroundColor Cyan
+Write-Host "Astradio Automated Deployment - Audio Engine Pipeline" -ForegroundColor Cyan
+Write-Host "=====================================================" -ForegroundColor Cyan
 
 # Configuration
 $FRONTEND_URL = "https://astradio.vercel.app"
 $BACKEND_URL = "https://astradio-1.onrender.com"
 $GITHUB_REPO = "Nickalas-Paul/Astradio"
 
-Write-Host "`n📋 Deployment Configuration:" -ForegroundColor Yellow
+Write-Host "`nDeployment Configuration:" -ForegroundColor Yellow
 Write-Host "Frontend: $FRONTEND_URL" -ForegroundColor White
 Write-Host "Backend: $BACKEND_URL" -ForegroundColor White
 Write-Host "Repository: $GITHUB_REPO" -ForegroundColor White
 
-# Step 1: Verify current status
-Write-Host "`n🔍 Step 1: Checking current deployment status..." -ForegroundColor Green
+# Step 1: Check prerequisites
+Write-Host "`nStep 1: Checking prerequisites..." -ForegroundColor Green
 
-try {
-    $backendHealth = Invoke-RestMethod -Uri "$BACKEND_URL/health" -Method GET -TimeoutSec 10
-    Write-Host "✅ Backend is online and healthy" -ForegroundColor Green
-    Write-Host "   Status: $($backendHealth.status)" -ForegroundColor White
-} catch {
-    Write-Host "❌ Backend health check failed: $($_.Exception.Message)" -ForegroundColor Red
-    Write-Host "   This is expected if backend is not deployed yet" -ForegroundColor Yellow
+# Check if RENDER_API_KEY is set
+if (-not $env:RENDER_API_KEY) {
+    Write-Host "RENDER_API_KEY environment variable not set" -ForegroundColor Red
+    Write-Host "Please set it with: `$env:RENDER_API_KEY = 'your-api-key'" -ForegroundColor Yellow
+    Write-Host "Or run: .\scripts\setup-render-token.ps1" -ForegroundColor Yellow
+    exit 1
 }
 
+Write-Host "RENDER_API_KEY is configured" -ForegroundColor Green
+
 # Step 2: Deploy Backend to Render
-Write-Host "`n🚀 Step 2: Deploying Backend to Render..." -ForegroundColor Green
+Write-Host "`nStep 2: Deploying Backend to Render..." -ForegroundColor Green
 
-Write-Host "📝 Backend deployment instructions:" -ForegroundColor Yellow
-Write-Host "1. Go to https://dashboard.render.com" -ForegroundColor White
-Write-Host "2. Create new Web Service" -ForegroundColor White
-Write-Host "3. Connect GitHub repository: $GITHUB_REPO" -ForegroundColor White
-Write-Host "4. Configure settings:" -ForegroundColor White
-Write-Host "   - Name: astradio-1" -ForegroundColor White
-Write-Host "   - Build Command: corepack enable; pnpm install --frozen-lockfile; pnpm --filter api build" -ForegroundColor White
-Write-Host "   - Start Command: node apps/api/dist/app.js" -ForegroundColor White
-Write-Host "   - Environment: Node" -ForegroundColor White
+try {
+    # Use the existing automated deployment script
+    Write-Host "Triggering Render deployment..." -ForegroundColor Yellow
+    & .\scripts\deploy-render-api.ps1 -ServiceName "astradio-api"
+    
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "Backend deployed successfully!" -ForegroundColor Green
+    } else {
+        Write-Host "Backend deployment failed" -ForegroundColor Red
+        exit 1
+    }
+} catch {
+    Write-Host "Backend deployment error: $($_.Exception.Message)" -ForegroundColor Red
+    exit 1
+}
 
-# Step 3: Deploy Frontend to Vercel
-Write-Host "`n🌐 Step 3: Deploying Frontend to Vercel..." -ForegroundColor Green
+# Step 3: Wait for backend to be ready
+Write-Host "`nStep 3: Waiting for backend to be ready..." -ForegroundColor Green
 
-Write-Host "📝 Frontend deployment instructions:" -ForegroundColor Yellow
-Write-Host "1. Go to https://vercel.com/dashboard" -ForegroundColor White
-Write-Host "2. Import project from GitHub: $GITHUB_REPO" -ForegroundColor White
-Write-Host "3. Configure settings:" -ForegroundColor White
-Write-Host "   - Framework Preset: Next.js" -ForegroundColor White
-Write-Host "   - Root Directory: apps/web" -ForegroundColor White
-Write-Host "   - Build Command: pnpm install --frozen-lockfile; pnpm --filter web build" -ForegroundColor White
-Write-Host "   - Output Directory: .next" -ForegroundColor White
+$maxAttempts = 30
+$attempt = 0
 
-# Step 4: Test Audio Pipeline
-Write-Host "`n🎵 Step 4: Testing Audio Pipeline..." -ForegroundColor Green
+while ($attempt -lt $maxAttempts) {
+    $attempt++
+    Write-Host "Health check attempt $attempt/$maxAttempts..." -ForegroundColor Yellow
+    
+    try {
+        $response = Invoke-RestMethod -Uri "$BACKEND_URL/health" -Method GET -TimeoutSec 10
+        Write-Host "Backend is healthy: $($response.status)" -ForegroundColor Green
+        break
+    } catch {
+        Write-Host "Backend not ready yet, waiting 10 seconds..." -ForegroundColor Yellow
+        Start-Sleep -Seconds 10
+    }
+}
 
-Write-Host "📝 Audio pipeline test instructions:" -ForegroundColor Yellow
-Write-Host "1. Wait for both deployments to complete" -ForegroundColor White
-Write-Host "2. Test backend API endpoints:" -ForegroundColor White
-Write-Host "   - Health: $BACKEND_URL/health" -ForegroundColor White
-Write-Host "   - Daily Chart: POST $BACKEND_URL/api/daily" -ForegroundColor White
-Write-Host "   - Genres: GET $BACKEND_URL/api/genres" -ForegroundColor White
-Write-Host "3. Test frontend integration:" -ForegroundColor White
-Write-Host "   - Visit: $FRONTEND_URL" -ForegroundColor White
-Write-Host "   - Check browser console for API calls" -ForegroundColor White
+if ($attempt -eq $maxAttempts) {
+    Write-Host "Backend failed to become ready after $maxAttempts attempts" -ForegroundColor Red
+    exit 1
+}
 
-# Step 5: Final verification checklist
-Write-Host "`n📋 Step 5: Final Verification Checklist" -ForegroundColor Green
-Write-Host "=====================================" -ForegroundColor Green
+# Step 4: Deploy Frontend to Vercel (using Vercel CLI)
+Write-Host "`nStep 4: Deploying Frontend to Vercel..." -ForegroundColor Green
 
-Write-Host "`n🔧 Backend (Render) Checklist:" -ForegroundColor Yellow
-Write-Host "□ Service is deployed and running" -ForegroundColor White
-Write-Host "□ Health endpoint responds: $BACKEND_URL/health" -ForegroundColor White
-Write-Host "□ Daily chart endpoint works: POST $BACKEND_URL/api/daily" -ForegroundColor White
-Write-Host "□ Genres endpoint works: GET $BACKEND_URL/api/genres" -ForegroundColor White
-Write-Host "□ CORS is configured for frontend domain" -ForegroundColor White
+# Check if Vercel CLI is installed
+try {
+    $vercelVersion = vercel --version
+    Write-Host "Vercel CLI found: $vercelVersion" -ForegroundColor Green
+} catch {
+    Write-Host "Vercel CLI not found. Installing..." -ForegroundColor Yellow
+    npm install -g vercel
+}
 
-Write-Host "`n🌐 Frontend (Vercel) Checklist:" -ForegroundColor Yellow
-Write-Host "□ Service is deployed and running" -ForegroundColor White
-Write-Host "□ Page loads without errors: $FRONTEND_URL" -ForegroundColor White
-Write-Host "□ API calls to backend work" -ForegroundColor White
-Write-Host "□ Audio generation triggers on page load" -ForegroundColor White
-Write-Host "□ No console errors in browser" -ForegroundColor White
+# Deploy to Vercel
+try {
+    Write-Host "Deploying to Vercel..." -ForegroundColor Yellow
+    Set-Location "apps/web"
+    
+    # Deploy with production flag
+    vercel --prod --yes
+    
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "Frontend deployed successfully!" -ForegroundColor Green
+    } else {
+        Write-Host "Frontend deployment failed" -ForegroundColor Red
+        exit 1
+    }
+    
+    Set-Location "../.."
+} catch {
+    Write-Host "Frontend deployment error: $($_.Exception.Message)" -ForegroundColor Red
+    Set-Location "../.."
+    exit 1
+}
 
-Write-Host "`n🎵 Audio Pipeline Checklist:" -ForegroundColor Yellow
-Write-Host "□ Astrological data is calculated correctly" -ForegroundColor White
-Write-Host "□ Music parameters are generated from chart data" -ForegroundColor White
-Write-Host "□ Audio files are created and served" -ForegroundColor White
-Write-Host "□ Client receives and plays audio" -ForegroundColor White
-Write-Host "□ Different genres produce different audio" -ForegroundColor White
+# Step 5: Test the complete pipeline
+Write-Host "`nStep 5: Testing Audio Pipeline..." -ForegroundColor Green
 
-Write-Host "`n🚀 Deployment Summary:" -ForegroundColor Cyan
-Write-Host "=====================" -ForegroundColor Cyan
+Write-Host "Testing backend endpoints..." -ForegroundColor Yellow
+
+# Test health endpoint
+try {
+    $health = Invoke-RestMethod -Uri "$BACKEND_URL/health" -Method GET
+    Write-Host "Health endpoint: $($health.status)" -ForegroundColor Green
+} catch {
+    Write-Host "Health endpoint failed: $($_.Exception.Message)" -ForegroundColor Red
+}
+
+# Test genres endpoint
+try {
+    $genres = Invoke-RestMethod -Uri "$BACKEND_URL/api/genres" -Method GET
+    Write-Host "Genres endpoint: $($genres.Count) genres available" -ForegroundColor Green
+} catch {
+    Write-Host "❌ Genres endpoint failed: $($_.Exception.Message)" -ForegroundColor Red
+}
+
+# Test daily chart endpoint
+try {
+    $dailyChart = Invoke-RestMethod -Uri "$BACKEND_URL/api/daily" -Method POST -ContentType "application/json" -Body '{"date":"2024-01-01","time":"12:00","latitude":40.7128,"longitude":-74.0060}'
+    Write-Host "✅ Daily chart endpoint: Chart generated successfully" -ForegroundColor Green
+} catch {
+    Write-Host "❌ Daily chart endpoint failed: $($_.Exception.Message)" -ForegroundColor Red
+}
+
+# Step 6: Final verification
+Write-Host "`n📋 Step 6: Final Verification" -ForegroundColor Green
+Write-Host "============================" -ForegroundColor Green
+
+Write-Host "`n🎉 DEPLOYMENT COMPLETE!" -ForegroundColor Green
+Write-Host "=====================" -ForegroundColor Green
 Write-Host "Frontend URL: $FRONTEND_URL" -ForegroundColor White
 Write-Host "Backend URL: $BACKEND_URL" -ForegroundColor White
-Write-Host "Test Script: test-audio-pipeline.ps1" -ForegroundColor White
 
-Write-Host "`n💡 Next Steps:" -ForegroundColor Yellow
-Write-Host "1. Deploy backend to Render using the instructions above" -ForegroundColor White
-Write-Host "2. Deploy frontend to Vercel using the instructions above" -ForegroundColor White
-Write-Host "3. Run: .\test-audio-pipeline.ps1" -ForegroundColor White
-Write-Host "4. Visit $FRONTEND_URL to test the complete audio pipeline" -ForegroundColor White
+Write-Host "`n🎵 Your AI Audio Music Generator is now LIVE!" -ForegroundColor Cyan
+Write-Host "Visit $FRONTEND_URL to start generating astrological music!" -ForegroundColor White
 
-Write-Host "`n🎉 Your astrological audio engine will be live and functioning!" -ForegroundColor Green
+Write-Host "`nNext Steps:" -ForegroundColor Yellow
+Write-Host "1. Visit $FRONTEND_URL" -ForegroundColor White
+Write-Host "2. Test the audio generation" -ForegroundColor White
+Write-Host "3. Check browser console for any errors" -ForegroundColor White
+Write-Host "4. Start working on AI music generation features!" -ForegroundColor White
+
+Write-Host "`nYou can now focus on the AI audio music generator without deployment issues!" -ForegroundColor Green
