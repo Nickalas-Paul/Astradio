@@ -2,10 +2,16 @@ services:
   - type: web
     name: Astradio
     env: node
-    plan: starter
+    plan: free
     region: oregon
+    autoDeploy: true
     rootDir: .
     buildCommand: |
-      corepack enable && pnpm -v || npm i -g pnpm && pnpm -w install --frozen-lockfile && pnpm -w build
-    startCommand: pnpm -F @astradio/api start
-    autoDeploy: true
+      corepack enable
+      pnpm install --frozen-lockfile
+      pnpm -w build
+    startCommand: node apps/api/dist/app.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 20.19.4
