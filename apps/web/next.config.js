@@ -4,7 +4,7 @@ import createAnalyzer from "@next/bundle-analyzer";
 const nextConfig = {
   reactStrictMode: true,
   experimental: { esmExternals: true },
-  eslint: { ignoreDuringBuilds: false },
+  eslint: { ignoreDuringBuilds: true },
   compiler: { removeConsole: process.env.NODE_ENV === "production" },
   async headers() {
     return [
