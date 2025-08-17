@@ -2,9 +2,9 @@
   "name": "astradio-monorepo",
   "private": true,
   "type": "module",
-  "packageManager": "pnpm@8.15.0",
+  "packageManager": "pnpm@8.15.4",
   "engines": {
-    "node": ">=18.18 <=22.x"
+    "node": ">=20.19.0"
   },
   "workspaces": [
     "apps/*",

@@ -1,19 +1,14 @@
 services:
   - type: web
-    name: Astradio
+    name: Astradio-1
     env: node
+    plan: starter
+    region: oregon
     rootDir: .
     buildCommand: |
       corepack enable
-      corepack prepare pnpm@9.1.0 --activate
+      pnpm -v
       pnpm install --frozen-lockfile
       pnpm -w build
-    startCommand: |
-      node apps/api/dist/app.js
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: PNPM_HOME
-        value: /opt/render/.pnpm
-      - key: PATH
-        value: /opt/render/.pnpm:$PATH
+    startCommand: node apps/api/dist/app.js
+    autoDeploy: true
