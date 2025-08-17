@@ -3,7 +3,7 @@ services:
     name: astradio-api
     env: node
     rootDir: .
-    buildCommand: corepack enable && pnpm -w install --frozen-lockfile && pnpm --filter api build
+    buildCommand: chmod +x build.sh && ./build.sh
     startCommand: node apps/api/dist/app-minimal.js
     healthCheckPath: /health
     envVars:

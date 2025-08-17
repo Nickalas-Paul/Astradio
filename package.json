@@ -12,7 +12,7 @@
   ],
   "scripts": {
     "dev": "pnpm -r --parallel dev",
-    "build": "echo 'Build skipped - deploying working core'",
+    "build": "corepack enable && pnpm install --frozen-lockfile && pnpm --filter api build",
     "typecheck": "pnpm -r typecheck",
     "guard:deps": "echo 'Dependency check skipped for deployment'",
     "verify": "echo 'Verification passed - ready to deploy'",
