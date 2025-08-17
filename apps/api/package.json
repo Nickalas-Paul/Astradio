@@ -8,7 +8,9 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
-    "prestart": "node -e \"process.exit(require('fs').existsSync('dist')?0:1)\" || pnpm build"
+    "prestart": "node -e \"process.exit(require('fs').existsSync('dist')?0:1)\" || pnpm build",
+    "lint": "eslint . --ext .ts,.tsx --max-warnings=0",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@astradio/core": "workspace:*",
@@ -27,7 +29,8 @@
     "@types/express": "^4.17.21",
     "@types/morgan": "^1.9.9",
     "@types/node": "^20.12.12",
+    "eslint": "8.57.0",
     "tsx": "^4.16.2",
-    "typescript": "^5.5.4"
+    "typescript": "5.4.5"
   }
 }

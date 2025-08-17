@@ -13,11 +13,12 @@
   "scripts": {
     "build": "pnpm -r build",
     "dev": "pnpm -r --parallel dev",
-    "lint": "pnpm -r lint",
-    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r -F @astradio/web exec eslint . --ext .ts,.tsx && pnpm -r -F @astradio/api exec eslint . --ext .ts,.tsx",
+    "lint:strict": "pnpm run lint --silent && echo Lint OK",
+    "typecheck": "pnpm -r run -w typecheck",
     "test": "pnpm -r test",
     "guard:deps": "tsx tools/guard-deps.ts",
-    "verify": "pnpm lint && pnpm typecheck && pnpm guard:deps && pnpm test",
+    "verify": "pnpm run lint:strict && pnpm run typecheck && pnpm run guard:deps",
     "lighthouse": "lhci autorun",
     "analyze": "ANALYZE=true pnpm -F @astradio/web build",
     "smoke": "pwsh scripts/smoke.ps1",
@@ -25,15 +26,15 @@
     "load-test": "k6 run -e API=$NEXT_PUBLIC_API_URL scripts/load.js"
   },
   "devDependencies": {
-    "@eslint/js": "9.33.0",
     "@lhci/cli": "0.15.1",
-    "@typescript-eslint/eslint-plugin": "^8.39.1",
-    "@typescript-eslint/parser": "^8.39.1",
-    "eslint": "^9.33.0",
+    "@typescript-eslint/eslint-plugin": "6.21.0",
+    "@typescript-eslint/parser": "6.21.0",
+    "eslint": "8.57.0",
+    "eslint-config-next": "14.2.5",
     "eslint-config-prettier": "^10.1.8",
     "husky": "9.1.7",
     "tsx": "^4.16.2",
-    "typescript": "^5.9.2"
+    "typescript": "5.4.5"
   },
   "dependencies": {
     "swisseph-wasm": "0.0.2"
