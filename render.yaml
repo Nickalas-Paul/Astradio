@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: Astradio-1
+    name: Astradio
     env: node
     rootDir: .
     buildCommand: |
