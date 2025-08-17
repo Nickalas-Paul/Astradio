@@ -1,12 +1,7 @@
 {
   "version": 2,
   "framework": "nextjs",
-  "buildCommand": "cd apps/web && pnpm install --frozen-lockfile && pnpm build",
+  "buildCommand": "pnpm i --frozen-lockfile && pnpm -w build && pnpm -F @astradio/web build",
   "outputDirectory": "apps/web/.next",
-  "installCommand": "pnpm install --frozen-lockfile",
-  "functions": {
-    "apps/web/.next/server/**/*.js": {
-      "maxDuration": 30
-    }
-  }
+  "installCommand": "pnpm i --frozen-lockfile"
 }

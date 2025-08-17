@@ -5,18 +5,21 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "dev": "tsc -w -p tsconfig.json",
-    "lint": "pnpm exec eslint . --ext .ts,.tsx --max-warnings=0",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@astradio/shared": "workspace:*",
-    "swisseph-wasm": "^0.0.2",
+    "ephemeris": "2.2.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.0.0",
     "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.39.1",
+    "@typescript-eslint/parser": "^8.39.1",
+    "eslint": "^9.33.0",
     "typescript": "^5.4.2"
   }
 }
