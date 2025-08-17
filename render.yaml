@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: astradio-api
+    name: Astradio
     env: node
     rootDir: .
     buildCommand: chmod +x build.sh && ./build.sh
