@@ -1,8 +1,6 @@
 {
   "framework": "nextjs",
-  "rootDirectory": "apps/web",
-  "installCommand": "cd .. && corepack enable && pnpm i --frozen-lockfile",
-  "buildCommand": "pnpm build",
-  "ignoreCommand": "cd .. && pnpm -w typecheck && pnpm -w lint",
-  "outputDirectory": ".next"
+  "buildCommand": "pnpm -w build && pnpm -F @astradio/web build",
+  "installCommand": "corepack enable && pnpm -v || npm i -g pnpm && pnpm -w install --frozen-lockfile",
+  "outputDirectory": "apps/web/.next"
 }
