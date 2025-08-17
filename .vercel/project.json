@@ -1,1 +1,14 @@
-{"projectId":"prj_7II6qeazIx2XWjlDSGTFU90e5s4O","orgId":"team_RfmD0Zi9IP2u6IXjVhrtGKrz","projectName":"astradio-web"}
+{
+  "projectId": "prj_7II6qeazIx2XWjlDSGTFU90e5s4O",
+  "orgId": "team_RfmD0Zi9IP2u6IXjVhrtGKrz",
+  "projectName": "astradio-web",
+  "settings": {
+    "framework": "nextjs",
+    "rootDirectory": "apps/web",
+    "installCommand": "pnpm install --frozen-lockfile",
+    "buildCommand": "pnpm -F @astradio/web build",
+    "outputDirectory": "apps/web/.next",
+    "nodeVersion": "22.x",
+    "directoryListing": false
+  }
+}

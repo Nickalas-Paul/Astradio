@@ -4,7 +4,7 @@ services:
     env: node
     rootDir: .
     buildCommand: corepack enable && pnpm -w install --frozen-lockfile && pnpm --filter api build
-    startCommand: node apps/api/dist/app.js
+    startCommand: node apps/api/dist/app-minimal.js
     healthCheckPath: /health
     envVars:
       - key: NODE_VERSION
