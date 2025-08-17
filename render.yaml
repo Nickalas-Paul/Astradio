@@ -10,7 +10,7 @@ services:
       corepack enable
       pnpm install --frozen-lockfile
       pnpm -w build
-    startCommand: node apps/api/dist/app.js
+    startCommand: cd apps/api && node dist/app.js
     healthCheckPath: /health
     envVars:
       - key: NODE_VERSION
