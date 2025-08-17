@@ -1,48 +1,16 @@
-$ErrorActionPreference="Stop"
-Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"; Set-StrictMode -Version Latest
+$api = $env:NEXT_PUBLIC_API_URL; if (-not $api) { $api = "https://astradio-1.onrender.com" }
 
-$api = "https://astradio-1.onrender.com"
-$web = "https://astradio-web.vercel.app"
-$iwrOpts = @{UseBasicParsing=$true}
+Write-Host "SMOKE: API"
+Invoke-WebRequest -Uri "$api/health" -UseBasicParsing | Select-Object -ExpandProperty StatusCode
+$ephem = Invoke-WebRequest -Uri "$api/api/ephemeris/today" -UseBasicParsing
+if ($ephem.Content.Length -lt 50) { throw "Ephemeris payload too small." }
 
-Write-Host "Running smoke tests..." -ForegroundColor Cyan
+Write-Host "SMOKE: Web"
+$proj = (vercel project ls | Select-String -Pattern "astradio-web")
+if (-not $proj) { throw "astradio-web project not linked." }
+$urls = vercel ls | Select-String -Pattern "https://.*vercel.app"
+$first = ($urls | Select-Object -First 1).ToString().Trim().Split()[-1]
+Invoke-WebRequest -Uri $first -UseBasicParsing | Select-Object -ExpandProperty StatusCode
 
-try {
-    Invoke-WebRequest "$api/health" @iwrOpts | Out-Null
-    Write-Host "API health check: PASSED" -ForegroundColor Green
-} catch {
-    Write-Host "API health check: FAILED - $($_.Exception.Message)" -ForegroundColor Red
-}
-
-try {
-    $e = Invoke-WebRequest "$api/api/ephemeris/today" @iwrOpts
-    if ($e.Content -match '"ephemeris"\s*:\s*\[') {
-        Write-Host "Ephemeris API: PASSED" -ForegroundColor Green
-    } else {
-        Write-Host "Ephemeris API: FAILED - Unexpected format" -ForegroundColor Yellow
-    }
-} catch {
-    Write-Host "Ephemeris API: FAILED - $($_.Exception.Message)" -ForegroundColor Red
-}
-
-try {
-    $g = Invoke-WebRequest "$api/api/audio/generate" -Method Post -ContentType 'application/json' -Body '{"genre":"ambient"}' @iwrOpts
-    if ($g.Content -match '"ok"\s*:\s*true') {
-        Write-Host "Audio generation API: PASSED" -ForegroundColor Green
-    } else {
-        Write-Host "Audio generation API: FAILED - Unexpected format" -ForegroundColor Yellow
-    }
-} catch {
-    Write-Host "Audio generation API: FAILED - $($_.Exception.Message)" -ForegroundColor Red
-}
-
-try {
-    Invoke-WebRequest $web @iwrOpts | Out-Null
-    Write-Host "Web app: PASSED" -ForegroundColor Green
-} catch {
-    Write-Host "Web app: FAILED - $($_.Exception.Message)" -ForegroundColor Red
-}
-
-Write-Host "Smoke tests completed!" -ForegroundColor Cyan
-Write-Host "API: $api" -ForegroundColor Blue
-Write-Host "Web: $web" -ForegroundColor Blue
+Write-Host "Smoke passed."

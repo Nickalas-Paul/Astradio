@@ -1,19 +1,9 @@
-# ====== DEPLOYMENT ROLLBACK SCRIPT ======
-# Quickly rollback to previous deployment if issues arise
-# Usage: . scripts/rollback.ps1 [web|api|both]
-
-param([ValidateSet("web","api","both")][string]$target="both")
-$ErrorActionPreference="Stop"
-Set-StrictMode -Version Latest
-function Ok($m){Write-Host $m -ForegroundColor Green}
-
-if($target -in @("web","both")){
-  # Roll back to previous Vercel deployment
-  $proj=$env:VERCEL_PROJECT_NAME
-  if(-not $proj){$proj="astradio-web"}
-  vercel rollback --safe --yes $(if($env:VERCEL_TOKEN){"--token $env:VERCEL_TOKEN --scope $env:VERCEL_ORG_ID"})
-  Ok "Web rollback issued"
-}
-if($target -in @("api","both")){
-  Write-Host "Use Render: redeploy previous commit or prior deploy id (manual step via API call if you store deploy ids)."
-}
+$ErrorActionPreference = "Stop"; Set-StrictMode -Version Latest
+if (-not $env:VERCEL_TOKEN -or -not $env:VERCEL_ORG_ID) { throw "Load env first (scripts/load-deploy-env.ps1)." }
+# Roll back to previous prod deployment
+$ids = vercel ls --prod --token $env:VERCEL_TOKEN --scope $env:VERCEL_ORG_ID | Select-String -Pattern "https://.*vercel.app" | ForEach-Object {$_.ToString().Trim()}
+if ($ids.Count -lt 2) { throw "Not enough prod deployments to rollback." }
+$prev = $ids[1].Split()[-1]
+Write-Host "Rollback target: $prev"
+vercel alias set $prev astradio-web --token $env:VERCEL_TOKEN --scope $env:VERCEL_ORG_ID
+Write-Host "Rollback done."

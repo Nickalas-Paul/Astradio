@@ -1,40 +1,22 @@
-$ErrorActionPreference="Stop"
-Set-StrictMode -Version Latest
+# Strict + fail-fast
+$ErrorActionPreference = "Stop"; Set-StrictMode -Version Latest
 
-function Write-Ok($m){Write-Host $m -ForegroundColor Green}
-function Write-Warn($m){Write-Host $m -ForegroundColor Yellow}
-function Write-Info($m){Write-Host $m -ForegroundColor Cyan}
-
-Write-Info "Loading deployment environment..."
-
-# Load from .env if present
-$envFile = "scripts/deploy.env"
+# Load from scripts/deploy.env if present (KEY=VALUE per line, ignore comments/blank)
+$envFile = Join-Path $PSScriptRoot "deploy.env"
 if (Test-Path $envFile) {
-    (Get-Content $envFile) | ForEach-Object {
-        if ($_ -match "^\s*#") { return }
-        $i = $_.IndexOf("=")
-        if ($i -gt 0) {
-            $k = $_.Substring(0, $i).Trim()
-            $v = $_.Substring($i + 1).Trim()
-            if ($k) {
-                [Environment]::SetEnvironmentVariable($k, $v, "Process")
-            }
-        }
-    }
-    Write-Ok "Loaded env from $envFile"
+  foreach ($line in Get-Content $envFile | Where-Object {$_ -and $_ -notmatch '^\s*#'}) {
+    $kv = $line -split '=',2
+    if ($kv.Count -eq 2) { [Environment]::SetEnvironmentVariable($kv[0].Trim(), $kv[1].Trim(), "Process") }
+  }
 }
 
-# Set Render API key if not already set
-if (-not $env:RENDER_API_KEY) {
-    $env:RENDER_API_KEY = "rnd_gKmqXJ9NIcYhZB0PrDJ989uH2H1n"
-    Write-Ok "Set RENDER_API_KEY"
-}
+# Required envs (Render optional owner if service exists)
+$required = @("VERCEL_TOKEN","VERCEL_ORG_ID")
+$missing = @()
+foreach ($k in $required) { if (-not $env:$k -or [string]::IsNullOrWhiteSpace($env:$k)) { $missing += $k } }
+if ($missing.Count -gt 0) { throw "Missing env vars: $($missing -join ', '). Add them to scripts/deploy.env" }
 
-# Set Render Owner ID if not already set
-if (-not $env:RENDER_OWNER_ID) {
-    $env:RENDER_OWNER_ID = "tea-cvu1lsh5pdvs73e3dfe0"
-    Write-Ok "Set RENDER_OWNER_ID"
-}
+# Defaults (non-secret)
+if (-not $env:NEXT_PUBLIC_API_URL) { $env:NEXT_PUBLIC_API_URL = "https://astradio-1.onrender.com" }
 
-Write-Ok "Environment loaded successfully!"
-Write-Info "Render Owner ID: $($env:RENDER_OWNER_ID)"
+Write-Host "Environment loaded."
