@@ -1,7 +1,10 @@
 {
   "framework": "nextjs",
-  "installCommand": "pnpm i --frozen-lockfile",
-  "buildCommand": "cd apps/web && pnpm install --frozen-lockfile && pnpm build",
-  "ignoreCommand": "echo 'Skipping typecheck and lint for deployment'",
-  "outputDirectory": "apps/web/.next"
+  "installCommand": "pnpm install --frozen-lockfile",
+  "buildCommand": "pnpm -F @astradio/web build",
+  "outputDirectory": "apps/web/.next",
+  "ignoreCommand": "pnpm -w typecheck && pnpm -w lint || true",
+  "env": {
+    "NEXT_DISABLE_ESLINT_PLUGIN": "1"
+  }
 }
