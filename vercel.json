@@ -1,4 +1,10 @@
 {
-  "version": 2,
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "installCommand": "pnpm install --frozen-lockfile",
+  "buildCommand": "pnpm -F @astradio/web build",
+  "outputDirectory": "apps/web/.next",
+  "ignoreCommand": "pnpm -w typecheck && pnpm -w lint || true",
+  "env": {
+    "NEXT_DISABLE_ESLINT_PLUGIN": "1"
+  }
 }

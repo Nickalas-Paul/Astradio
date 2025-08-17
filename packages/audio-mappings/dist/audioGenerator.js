@@ -5,6 +5,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AudioGenerator = void 0;
 // Simple sine wave generator for Node.js
 class SineWaveGenerator {
+    sampleRate;
     constructor(sampleRate = 44100) {
         this.sampleRate = sampleRate;
     }
@@ -61,6 +62,8 @@ class SineWaveGenerator {
     }
 }
 class AudioGenerator {
+    generator;
+    sampleRate;
     constructor(sampleRate = 44100) {
         this.generator = new SineWaveGenerator(sampleRate);
         this.sampleRate = sampleRate;
