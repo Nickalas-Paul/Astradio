@@ -1,6 +1,0 @@
-**/.next/**
-**/dist/**
-**/coverage/**
-**/node_modules/**
-**/.vercel/**
-**/.turbo/**
