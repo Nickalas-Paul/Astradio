@@ -1,17 +1,19 @@
 services:
   - type: web
-    name: Astradio
+    name: Astradio-1
     env: node
     rootDir: .
-    buildCommand: chmod +x build.sh && ./build.sh
-    startCommand: node apps/api/dist/app-minimal.js
-    healthCheckPath: /health
+    buildCommand: |
+      corepack enable
+      corepack prepare pnpm@9.1.0 --activate
+      pnpm install --frozen-lockfile
+      pnpm -w build
+    startCommand: |
+      node apps/api/dist/app.js
     envVars:
-      - key: NODE_VERSION
-        value: 20
-      - key: FRONTEND_URL
-        sync: false
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: 10000
+      - key: PNPM_HOME
+        value: /opt/render/.pnpm
+      - key: PATH
+        value: /opt/render/.pnpm:$PATH
