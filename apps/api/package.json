@@ -3,17 +3,18 @@
   "version": "0.1.0",
   "private": true,
   "type": "commonjs",
-  "main": "dist/index.js",
+  "main": "dist/app-minimal.js",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
-    "build": "echo 'API build skipped for deployment'",
-    "start": "node dist/index.js",
+    "dev": "tsx watch src/app-minimal.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/app-minimal.js",
     "prestart": "node -e \"process.exit(require('fs').existsSync('dist')?0:1)\" || pnpm build",
     "lint": "eslint . --ext .ts,.tsx --max-warnings=0",
     "typecheck": "echo 'API typecheck skipped for deployment'"
   },
   "dependencies": {
     "@sentry/node": "10.5.0",
+    "compression": "1.8.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
@@ -24,10 +25,12 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@types/compression": "1.8.1",
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/morgan": "^1.9.9",
     "@types/node": "^20.12.12",
+    "@types/three": "0.179.0",
     "eslint": "8.57.0",
     "tsx": "^4.16.2",
     "typescript": "5.4.5"
